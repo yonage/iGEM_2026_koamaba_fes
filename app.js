@@ -176,6 +176,7 @@
 
   // ---------- Block / drag engine ----------
   const blocks = new Map();
+  let block_list = [];
   let seq = 0, zTop = 1, dragState = null;
 
   // Positioned with translate3d rather than left/top: moving an element that carries a
@@ -210,6 +211,7 @@
     canvasBlocks.appendChild(el);
     const b = { id, partId, part, el, x, connY, w:shape.w, h:shape.h, barOffset:shape.barOffset, next:null, prev:null };
     blocks.set(id, b);
+    refreshBlockList();
     render(b);
     updateHint();
     el.addEventListener('pointerenter', () => { if (!dragState) showTooltip(el, part); });
@@ -289,6 +291,8 @@
       }
     }
 
+    refreshBlockList();
+
     if (dragState.lastHighlight) dragState.lastHighlight.el.classList.remove('snap-target');
     trayWrap.classList.remove('drag-over');
     group.forEach(id => { const b = blocks.get(id); if (b) b.el.classList.remove('dragging'); });
@@ -303,6 +307,7 @@
     const head = blocks.get(group[0]);
     if (head && head.prev) { const p = blocks.get(head.prev); if (p) p.next = null; }
     group.forEach(id => { const b = blocks.get(id); if (b) { b.el.remove(); blocks.delete(id); } });
+    refreshBlockList();
   }
 
   tray.addEventListener('pointerdown', e => {
@@ -343,10 +348,29 @@
     return seqArr;
   }
 
+  function getCurrentSequences(){
+    const heads = [...blocks.values()].filter(b => !b.prev);
+    return heads.map(head => walkChain(head).map(block => ({
+      partId: block.partId,
+      label: block.part.label,
+      kind: block.part.kind,
+      shape: block.part.shape
+    })));
+  }
+
+  function refreshBlockList(){
+    block_list = getCurrentSequences();
+    window.block_list = block_list;
+  }
+
+  window.getCurrentSequences = getCurrentSequences;
+  refreshBlockList();
+
   const SIM_DT = 0.05, SIM_STEPS = 700, SIM_SAMPLE_EVERY = 10;
   const SAMPLE_DT = SIM_DT * SIM_SAMPLE_EVERY;
 
   function eulerRun(k_tx, eff, parts){
+    //M=mRNA,P=protein
     let M = 0;
     // Each protein decays at its own rate, so a "stable" enzyme accumulates far higher.
     const proteins = parts.map(p => ({ P: 0, arr: [], decay: partDecay(p) }));
@@ -388,7 +412,14 @@
   // Collapses gene blocks in a transcript into the parts actually translated.
   // A linker sitting between two genes fuses them; a dangling linker is ignored.
   function resolveTranslatedParts(seqArr){
-    const coding = seqArr.filter(b => b.part.cat === 'gene' || b.part.kind === 'seq-linker');
+    const coding = [];
+    for (const b of seqArr) {
+      if (b.part.cat === 'promoter') continue;
+      if (b.part.kind === 'terminator') break;
+      if (b.part.cat === 'gene' || b.part.kind === 'seq-linker') {
+        coding.push(b);
+      }
+    }
     const out = [];
     for (let i = 0; i < coding.length; i++) {
       const part = coding[i].part;
@@ -433,7 +464,7 @@
     };
   }
 
-  const SIGNAL_K = 0.35, HILL_N = 2;
+  const SIGNAL_K = 0.25, HILL_N = 2;
 
   // Signal-molecule response (the Lab slider), shared by the ODE and the 2D particle sim.
   function signalFactor(kind, signal){
@@ -444,8 +475,17 @@
 
   function analyze(){
     const signal = signalLevel();
-    const heads=[...blocks.values()].filter(b=>!b.prev);
-    const chainsRaw=heads.map(walkChain).filter(seqArr=>seqArr[0].part.cat==='promoter');
+    const heads = [...blocks.values()].filter(b => !b.prev);
+    const originalChains = heads.map(walkChain);
+    const recombinaseActive = originalChains.some(seqArr => {
+      if (!seqArr.length || seqArr[0].part.cat !== 'promoter') return false;
+      if (!seqArr.some(block => block.part.kind === 'gene-recomb')) return false;
+      const promKind = seqArr[0].part.kind;
+      const sig = signalFactor(promKind, signal);
+      if (sig !== null) return sig > 0.3;
+      return promKind === 'prom-const' || promKind === 'prom-repressor';
+    });
+    const chainsRaw = originalChains.map(seqArr => sequencescheck(seqArr, recombinaseActive)).filter(seqArr => seqArr.length && seqArr[0].part.cat === 'promoter');
 
     // pass 1: regulator supply — treat promRepressor as unrepressed, promActivator as OFF (first-order approx)
     let repressorSupply = 0, activatorSupply = 0;
@@ -533,6 +573,7 @@
   }
 
   function runSimulation(){
+
     program.classList.add('running');
     runStatus.style.display = 'inline-block';
     runStatus.textContent = 'シミュレーション中…';
@@ -632,15 +673,19 @@
   }
 
   function renderPreview(results){
-    let totalGFP = 0, totalKill = 0;
+    let totalGFP = 0, totalKill = 0, totalRecomb = 0;
     const items = [];
-    results.forEach((r, ci) => r.genes.forEach((g, gi) => items.push({ part: g.part, Pss: g.Pss, arr: g.arr })));
+    results.forEach(r => r.genes.forEach(g => items.push({ part: g.part, Pss: g.Pss, arr: g.arr })));
     const hasDegradingEnzyme = items.some(it => partKcat(it.part) > 0);
+
     items.forEach(it => {
       if (it.part.kind === 'gene-visible') totalGFP += it.Pss;
+      if (it.part.kind === 'gene-recomb') totalRecomb += it.Pss;
       if (it.part.kind === 'gene-kill') totalKill += it.Pss;
     });
     const dead = totalKill > 1.2;
+    const hasGFP = items.some(it => it.part.kind === 'gene-visible');
+    const hasRecombinase = items.some(it => it.part.kind === 'gene-recomb');
     setBacteriumVisual(previewBacterium, totalKill, totalGFP);
 
     if (results.length === 0) {
@@ -657,9 +702,12 @@
     } else if (hasDegradingEnzyme) {
       previewStatus.className = 'preview-status ok';
       previewStatus.textContent = '✅ 重油分解酵素を発現中（分解率 ' + (lastOil ? lastOil.removedPct.toFixed(1) : '0') + '%）。';
-    } else if (totalGFP > 0.1) {
+    } else if (hasGFP && totalGFP > 0.1) {
       previewStatus.className = 'preview-status ok';
       previewStatus.textContent = '✅ GFPが発現し、Genomyが発光しています（発現量 ≈ ' + totalGFP.toFixed(2) + '）。';
+    } else if (hasRecombinase && totalRecomb > 0.1) {
+      previewStatus.className = 'preview-status ok';
+      previewStatus.textContent = '✅ リコンビナーゼが発現しています（発現量 ≈ ' + totalRecomb.toFixed(2) + '）。';
     } else if (items.some(it => it.part.kind === 'gene-kill')) {
       // Kill gene present but below the lethal threshold — the containment circuit is holding.
       previewStatus.className = 'preview-status ok';
@@ -884,6 +932,27 @@
       (r.warn ? '<div class="desc" style="color:#b45309;">⚠️ ' + r.warn + '</div>' : '') +
       '<div>定常状態mRNA量 ≈ ' + r.Mss.toFixed(2) + '</div>' +
       svgChart([r.mArr], ['#888']);
+  }
+
+
+  //検索用コメント
+  function sequencescheck(seqArr, recombinaseActive){
+    if (!recombinaseActive) return seqArr;
+
+    let inside = false;
+    let siteCount = 0;
+    const newSeqArr = [];
+
+    for (const block of seqArr) {
+      if (block.part.kind === 'seq-recomb') {
+        inside = !inside;
+        siteCount++;
+        continue;
+      }
+      if (!inside) newSeqArr.push(block);
+    }
+
+    return siteCount >= 2 && !inside ? newSeqArr : seqArr;
   }
 
   const VERDICT_ICON = { pass:'✅', fail:'❌', todo:'🔬' };
