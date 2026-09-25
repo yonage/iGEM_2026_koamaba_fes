@@ -85,6 +85,17 @@
   const redLightFx = document.getElementById('redLightFx');
   const tabsBar = document.getElementById('tabsBar');
   const tabContent = document.getElementById('tabContent');
+  const advancedBtn = document.getElementById('advancedBtn');
+  const advancedscript = document.getElementById('advancedscript');
+  let advanced = false;
+  const mdTab = tabsBar.querySelector('[data-tab="md"]');
+  if (mdTab) mdTab.hidden = true;
+
+  advancedBtn.addEventListener('click', () => {
+    advanced =! advanced;
+    if (mdTab) mdTab.hidden = !advanced;
+    if (activeTab === 'questions') renderQuestions();
+  });
 
   // ---------- Right panel (Lab) toggle ----------
   toggleRight.addEventListener('click', () => {
@@ -706,7 +717,8 @@
   const STAGES = [
     {
       title: 'ステージ1: 重油分解酵素を発現させる',
-      story: 'タンカーの座礁により、沿岸海域へ大量の重油が流出しました。重油の主成分である長鎖アルカンは自然界での分解が遅く、生態系への影響は数年から数十年に及びます。\n' +
+      story: "20XX/XX/XX、重油を積んだ船が沈没しました。重油は環境中で分解されにくく、海洋生物や人間の健康に悪影響を及ぼす可能性があります。\nそこで、Genochemyを使って大腸菌に重油分解酵素を作らせることにしました。\nまずは、重油分解酵素を作るための遺伝子回路を設計してみましょう。",
+      advancedstory: 'タンカーの座礁により、沿岸海域へ大量の重油が流出しました。重油の主成分である長鎖アルカンは自然界での分解が遅く、生態系への影響は数年から数十年に及びます。\n' +
              '対策として、アルカン分解酵素を発現する大腸菌を設計します。まずは遺伝子発現の最小単位である転写ユニット——プロモーター、タンパク質コーディング領域、ターミネーター——を構成してください。',
       goal: '「常に発現」→「重油分解酵素遺伝子（標準）」→「ターミネーター」を連結して実行し、海水中の重油を <b>25%以上</b> 分解する。',
       judge(ctx){
@@ -719,7 +731,8 @@
     },
     {
       title: 'ステージ2: 触媒速度と安定性のトレードオフ',
-      story: '分解酵素には複数のバリアントが存在し、触媒速度（kcat）とタンパク質の安定性が異なります。\n' +
+      story: '重油分解酵素には様々な種類があり、安定性や分解速度が異なります。\nそれぞれの分解酵素の特徴を理解し、どの分解酵素を使うか選択してみましょう。',
+      advancedstory:'分解酵素には複数のバリアントが存在し、触媒速度（kcat）とタンパク質の安定性が異なります。\n' +
              '「高速分解酵素」は kcat が高い一方で半減期が短く、細胞内にほとんど蓄積しません。「安定分解酵素」は kcat が低いものの、分解を受けにくいため時間とともに高濃度まで蓄積します。\n' +
              '両者を個別に発現させ、発現量曲線と分解率の時間変化を比較してください。',
       goal: '「高速分解酵素遺伝子」と「安定分解酵素遺伝子」を<b>それぞれ単独で</b>発現させ、両者の挙動を比較する。',
@@ -739,7 +752,8 @@
     },
     {
       title: 'ステージ3: ドメイン融合による性能の両立',
-      story: '触媒速度と安定性は、それぞれ異なるドメインに由来する性質です。両者を1本のポリペプチドとして連結できれば、速度と安定性を同時に得られる可能性があります。\n' +
+      story: '分解酵素のいいところを組み合わせて、最強の酵素を作りましょう。\n安定性が高く、分解速度も速い酵素を作ることができれば、重油の分解効率が上がります。',
+      advancedstory: '触媒速度と安定性は、それぞれ異なるドメインに由来する性質です。両者を1本のポリペプチドとして連結できれば、速度と安定性を同時に得られる可能性があります。\n' +
              '合成生物学では、2つのコーディング領域を短いリンカー配列を介してin-frameで連結し、融合タンパク質として発現させる手法が広く用いられます。\n' +
              'トレイの「リンカー配列」を2つの酵素遺伝子の<b>間</b>に挿入してください。',
       goal: '「高速分解酵素遺伝子」→「リンカー配列」→「安定分解酵素遺伝子」の順に連結して融合酵素を発現させ、重油を <b>85%以上</b> 分解する。',
@@ -752,7 +766,8 @@
     },
     {
       title: 'ステージ4: バイオコンテインメント回路の設計',
-      story: '設計した菌株が処理海域外へ流出するリスクが指摘されました。重油貯蔵タンクなど意図しない環境で増殖すれば、保管中の重油まで分解されてしまいます。\n' +
+      story:"細菌が重油貯蔵タンクに入ってしまった！特定のシグナル分子がないと死ぬようにしよう！\n悪の組織が細菌を盗み出し、重油貯蔵タンクに入れようとしているという噂が流れてきました。\nこのままではタンク内の重油がつかえなくなってしまいます。\nそこで、特定のシグナル分子がないと死ぬように遺伝子回路を設計してみましょう。",
+      advancedstory: '設計した菌株が処理海域外へ流出するリスクが指摘されました。重油貯蔵タンクなど意図しない環境で増殖すれば、保管中の重油まで分解されてしまいます。\n' +
              '遺伝子組換え生物の環境放出では、特定の化学シグナルの存在下でのみ生存できるよう設計する「キルスイッチ」方式が用いられます。シグナル分子は処理対象の海域にのみ散布します。\n' +
              'シグナル分子の存在下でキルスイッチの転写が抑制され、非存在下では発現して細胞死を誘導する回路を設計してください。',
       goal: '「シグナル分子で抑制」→「キルスイッチ遺伝子」→「ターミネーター」を連結し、Labのシグナル分子濃度を変えて<b>シグナルあり=生存／シグナルなし=死滅</b>の両方を確認する。',
@@ -770,6 +785,7 @@
     {
       title: '参考: Optopass Mini',
       story: 'iGEM UTokyo 2022 のプロジェクト「Optopass」を模した回路です。「読み込み」タブから読み込めます。',
+      advancedstory: 'advancedstory',
       goal: '自由に回路を構成し、挙動を確認してください。',
       judge(){ return { state:'todo', msg:'自由課題です。' }; }
     }
@@ -890,6 +906,7 @@
 
   function renderQuestions(){
     const stage = STAGES[quePage];
+    const story = advanced ? stage.advancedstory : stage.story;
     const verdict = lastCtx ? stage.judge(lastCtx) : { state:'todo', msg:'回路を組んで「実行」を押すと、ここに判定が出ます。' };
     if (verdict.state === 'pass') cleared[quePage] = true;
 
@@ -900,7 +917,7 @@
     tabContent.innerHTML =
       '<div class="stage-dots">' + dots + '</div>' +
       '<h3 class="stage-title">' + stage.title + (cleared[quePage] ? ' <span class="stage-clear-badge">クリア</span>' : '') + '</h3>' +
-      '<div class="stage-story">' + stage.story.replace(/\n/g, '<br>') + '</div>' +
+      '<div class="stage-story">' + story.replace(/\n/g, '<br>') + '</div>' +
       '<div class="stage-goal"><span class="stage-goal-tag">目標</span>' + stage.goal + '</div>' +
       '<div class="stage-verdict ' + verdict.state + '">' + VERDICT_ICON[verdict.state] + ' ' + verdict.msg + '</div>' +
       (quePage === 1 || quePage === 2 ? enzymeComparisonTable() : '') +
