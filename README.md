@@ -7,6 +7,13 @@ A Scratch-like game focusing on genome editing.
 - `index.html` / `style.css` / `app.js` / `enzyme.js` / `crowding.js` — アプリ本体(外部サーバー不要)
 - ブラウザで `index.html` を直接開くか、GitHub Pagesを有効化すればWeb上でも公開できます
 
+## Webでプレイする
+
+**▶ https://yonage.github.io/iGEM_2026_koamaba_fes/**
+
+`main` ブランチに push すると、GitHub Actions(`.github/workflows/pages.yml`)が自動で GitHub Pages にデプロイします。
+初回のみ、リポジトリの **Settings → Pages → Build and deployment → Source** を **「GitHub Actions」** に設定してください。
+
 ## コンセプトの由来
 
 本プロジェクトは [iGEM UTokyo 2022「Genochemy」](https://2022.igem.wiki/utokyo/genochemy/)([実装](https://github.com/iGEM-UTokyo/genochemy))のコンセプトを参考に、UI/操作系を独自に再構成し、3D分子動力学など新しい機能を加えて開発しています。
