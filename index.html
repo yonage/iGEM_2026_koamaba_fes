@@ -31,6 +31,7 @@
     <div class="program" id="program">
       <div class="program-hint" id="programHint">↓ トレイからブロックをドラッグ&ドロップして遺伝子回路を組み立てましょう。<br>プロモーター → タンパク質コーディング領域 → ターミネーター</b> の順につなげるのが基本です。</div>
       <div id="canvasBlocks"></div>
+      <div class="guide" id="guide"></div>
       <div class="run-wrap">
         <span class="run-status" id="runStatus" style="display:none;"></span>
         <button class="clear-btn" id="clearBtn" title="プログラムのブロックをすべて消します">全部消す</button>
@@ -94,7 +95,9 @@
 
 <div class="tooltip" id="tooltip" hidden></div>
 
+<script src="mollook.js"></script>
 <script src="enzyme.js"></script>
+<script src="transcription.js"></script>
 <script src="crowding.js"></script>
 <script src="app.js"></script>
 

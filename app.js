@@ -88,6 +88,8 @@
   const advancedBtn = document.getElementById('advancedBtn');
   const advancedscript = document.getElementById('advancedscript');
   let advanced = false;
+  // ガイド（下の方で定義）が使えるようになったら true。初期化中の呼び出しを無視するため
+  let guideReady = false;
   const mdTab = tabsBar.querySelector('[data-tab="md"]');
   if (mdTab) mdTab.hidden = true;
 
@@ -95,12 +97,14 @@
     advanced =! advanced;
     if (mdTab) mdTab.hidden = !advanced;
     if (activeTab === 'questions') renderQuestions();
+    if (guideReady) renderGuide();
   });
 
   // ---------- Right panel (Lab) toggle ----------
   toggleRight.addEventListener('click', () => {
     const show = rightPanel.classList.toggle('show');
     toggleRight.textContent = show ? 'Lab を隠す' : 'Lab を表示';
+    if (guideReady) renderGuide();
   });
 
   // ---------- Environment controls ----------
@@ -361,6 +365,10 @@
   function refreshBlockList(){
     block_list = getCurrentSequences();
     window.block_list = block_list;
+    if (guideReady) {
+      renderGuide();
+      if (activeTab === 'questions') renderQuestions();
+    }
   }
 
   window.getCurrentSequences = getCurrentSequences;
@@ -529,6 +537,7 @@
           part: p, Pss: sim.proteins[i].P, arr: sim.proteins[i].arr
         })),
         mRNAName: c.parts.map(p => p.label).join(' + ') || '(遺伝子なし)',
+        blocks: c.seqArr.map(b => b.part),
         mArr: sim.mArr, Mss: sim.Mss, k_tx, eff: c.eff, warn
       };
     });
@@ -583,10 +592,13 @@
       lastOil = simulateOil(lastResults);
       lastCtx = buildRunContext(lastResults, lastOil);
       recordStageEvidence(lastCtx);
+      lastRunSig = programSig();
+      evaluateStages(lastCtx);
       applyGenomyState(lastResults);
       renderPreview(lastResults);
       initMDParticles(lastResults);
       refreshActiveTab();
+      renderGuide();
       runStatus.textContent = lastResults.length ? '実行完了（' + lastResults.length + '回路）' : '回路が組まれていません';
     }, 650);
   }
@@ -596,6 +608,7 @@
     blocks.forEach(b => b.el.remove());
     blocks.clear();
     lastResults = []; lastOil = null; lastCtx = null;
+    refreshBlockList();
     updateHint();
     renderPreview(lastResults);
     setBacteriumVisual(bacteriumImg, 0, 0);
@@ -744,7 +757,7 @@
 "トレイから取ったブロックを結合することによって、好きなように遺伝子回路を構築してみましょう！\n標準的な遺伝子はプロモーター、タンパク質コーディング領域、ターミネーターがこの順に並んだ形になります。試しに、「常に発現」プロモーターと「蛍光タンパク質遺伝子」「ターミネーター」をこの順で繋げてみましょう。\n回路構築が終わったら、右下の「実行」ボタンを押しましょう。実験開始です。シミュレーションが始まります。",
 "Labでは、3パラメーター: 薬剤Aの量と赤色光、青色光それぞれの照射の有無を調整することができます。\nここで組んだ基本的な回路は薬剤や光には依存しないためここでの調整は変化をもたらしませんが、もっと複雑な回路になってくると効いてくる要素です。",
 "実行ボタンを押し、環境調整も終わったら次は実験結果の観察と評価です。\nLabにあるGenomyのイラストを見ると蛍光タンパク質の発現量と種類を大まかに目で確認することができます。\n前述したとおり、ProteinタブとRNAタブでは生産中の物質の情報について知ることができ、特に蛍光タンパク質については発現量も見ることができます。",
-"それでは、問題タブにある問題に取り組んで、遺伝子回路設計を練習しましょう！\n（このコピー版では実際の問題画像は再現していません。元アプリでご確認ください。）"
+"それでは、プログラム画面の左上にある「🧭 ガイド」に従って、ステージ1から挑戦してみましょう！\nガイドはやることを1ステップずつ案内し、できたら自動でチェックが付きます。光っているブロックやボタンが、次に使うものです。\n困ったときは「お手本を置く」ボタンも使えます。ステージの詳しい説明は「ステージ」タブでも読めます。"
   ];
   let tutPage = 0;
 
@@ -871,6 +884,272 @@
   }
 
 
+  // ---------- ガイド（各ステージに組み込んだチュートリアル）----------
+  // ステージを小さなステップに分け、いまやるべき操作を1つずつ案内します。
+  // 各ステップの check() はプログラムの状態や実行結果から自動で判定するので、
+  // 案内どおりに操作すれば勝手にチェックが付いて次のステップへ進みます。
+  const guideEl = document.getElementById('guide');
+  let guideMin = false, guideStory = false, lastRunSig = null;
+  let guideHL = null, toastTimer = null;
+
+  function chainIds(){ return block_list.map(ch => ch.map(b => b.partId)); }
+  function programSig(){ return JSON.stringify(chainIds()); }
+  // いずれかの回路が ids の順で始まっているか
+  function startsWith(ids){ return chainIds().some(ch => ids.every((id, i) => ch[i] === id)); }
+  function hasPart(id){ return chainIds().some(ch => ch.includes(id)); }
+  // 今の回路のまま実行済みか
+  function ranCurrent(){ return !!lastCtx && lastRunSig === programSig(); }
+  function rec(id){ return !!stageState.enzymeRuns[id]; }
+  const B = id => '「<b>' + PART_BY_ID[id].short + '</b>」';
+
+  const GUIDE = [
+    {
+      intro: '沈没したタンカーから重油が流れ出した！ 大腸菌に、重油を分解する酵素を作らせよう。',
+      steps: [
+        { short: B('promConst1') + 'を置く', hl: { tray: 'promConst1' },
+          text: '下のトレイにある青いブロック' + B('promConst1') + 'を、上の広いスペースへ<b>ドラッグ</b>しよう。',
+          why: 'プロモーターは遺伝子の「スイッチ」。ここからDNAの読み取り（転写）が始まります。',
+          check: () => hasPart('promConst1') },
+        { short: B('DegradingEnzyme') + 'をつなぐ', hl: { tray: 'DegradingEnzyme' },
+          text: '紫のブロック' + B('DegradingEnzyme') + 'をドラッグして、プロモーターの<b>右側</b>に近づけよう。黄色く光ったら手をはなすと、くっつきます。',
+          why: 'このブロックには、作りたいタンパク質（重油を分解する酵素）の設計図が書かれています。',
+          check: () => startsWith(['promConst1', 'DegradingEnzyme']) },
+        { short: B('term1') + 'をつなぐ', hl: { tray: 'term1' },
+          text: '赤いブロック' + B('term1') + 'を、いちばん右にくっつけよう。',
+          why: 'ターミネーターは「読み取りはここまで」の合図。ないと転写がうまく終わりません。',
+          check: () => startsWith(['promConst1', 'DegradingEnzyme', 'term1']) },
+        { short: '「▶ 実行」を押す', hl: { el: 'run' },
+          text: '右下の「<b>▶ 実行</b>」ボタンを押そう。',
+          why: '組んだ遺伝子回路を大腸菌に入れたら何が起こるか、コンピュータで計算（シミュレーション）します。',
+          check: () => ranCurrent() },
+        { short: '分解率25%以上でクリア', hl: { el: 'oil' },
+          text: '右側の「<b>海水の重油汚染</b>」を見てみよう。分解率が<b>25%以上</b>ならクリア！',
+          why: '茶色い重油の層がうすくなっていれば、酵素がはたらいている証拠です。',
+          check: () => false }
+      ],
+      example: () => ['promConst1', 'DegradingEnzyme', 'term1'],
+      learned: '「プロモーター → 遺伝子 → ターミネーター」が遺伝子の基本の形です。この並びで、細胞は遺伝子からタンパク質を作ります。'
+    },
+    {
+      intro: '分解酵素にもいろいろな種類がある。「速いけど壊れやすい」酵素と「遅いけど長持ち」する酵素をくらべてみよう。',
+      steps: [
+        { short: B('enzFast') + 'の回路を組む', hl: { tray: 'enzFast' },
+          text: 'まずは' + B('enzFast') + 'を試そう。' + B('promConst1') + '→' + B('enzFast') + '→' + B('term1') + 'の順に組もう。<br><small>前の回路は「全部消す」で消すか、いらないブロックをトレイへ戻すと消せます。</small>',
+          why: '高速酵素は重油をとても速く分解できるけれど、細胞の中ですぐ壊れてしまいます。',
+          check: () => rec('enzFast') || startsWith(['promConst1', 'enzFast', 'term1']) },
+        { short: '実行する', hl: { el: 'run' },
+          text: '「<b>▶ 実行</b>」して、重油がどれだけ減るか見てみよう。',
+          why: '右の「発現量の推移」グラフも見ておこう。タンパク質の量はどれくらいたまるかな？',
+          check: () => rec('enzFast') },
+        { short: B('enzStable') + 'に入れ替える', hl: { tray: 'enzStable' },
+          text: '次は' + B('enzStable') + '。高速酵素のブロックをトレイへ戻して、代わりに' + B('enzStable') + 'をつなごう。<br><small>ブロックをつかんで引っぱると、右側ごと切り離せます。</small>',
+          why: '安定酵素は分解はゆっくりだけど壊れにくく、時間とともに細胞の中にたまっていきます。',
+          check: () => rec('enzStable') || startsWith(['promConst1', 'enzStable', 'term1']) },
+        { short: '実行する', hl: { el: 'run' },
+          text: 'もう一度「<b>▶ 実行</b>」しよう。',
+          why: 'さっきの高速酵素と、重油の減り方やグラフの形はどう違うかな？',
+          check: () => rec('enzStable') }
+      ],
+      example: () => rec('enzFast') ? ['promConst1', 'enzStable', 'term1'] : ['promConst1', 'enzFast', 'term1'],
+      learned: '高速酵素は立ち上がりが速く、安定酵素はたまっていくので後半に強い。酵素の「速さ」と「長持ち」はトレードオフ（両立しにくい関係）です。'
+    },
+    {
+      intro: '2つの酵素のいいところを合体させて、速くて壊れにくい最強の酵素を作ろう！',
+      steps: [
+        { short: B('promConst1') + '→' + B('enzFast'), hl: { tray: 'enzFast' },
+          text: B('promConst1') + 'の右に' + B('enzFast') + 'をつなごう。',
+          why: '高速酵素からは「速く分解する部分（触媒ドメイン）」をもらいます。',
+          check: () => startsWith(['promConst1', 'enzFast']) },
+        { short: B('seqLinker') + 'をつなぐ', hl: { tray: 'seqLinker' },
+          text: '高速酵素の右に、オレンジの細いブロック' + B('seqLinker') + 'をつなごう。',
+          why: 'リンカーは、2つの遺伝子を「1本のタンパク質」としてつなげる短い配列です。',
+          check: () => startsWith(['promConst1', 'enzFast', 'seqLinker']) },
+        { short: B('enzStable') + 'をつなぐ', hl: { tray: 'enzStable' },
+          text: 'リンカーの右に' + B('enzStable') + 'をつなごう。',
+          why: '安定酵素からは「壊れにくい部分（安定化ドメイン）」をもらいます。',
+          check: () => startsWith(['promConst1', 'enzFast', 'seqLinker', 'enzStable']) },
+        { short: B('term1') + 'をつなぐ', hl: { tray: 'term1' },
+          text: '最後に' + B('term1') + 'をつなごう。',
+          why: 'これで「高速酵素＋リンカー＋安定酵素」の融合タンパク質の遺伝子ができあがります。',
+          check: () => startsWith(['promConst1', 'enzFast', 'seqLinker', 'enzStable', 'term1']) },
+        { short: '実行して85%以上でクリア', hl: { el: 'run' },
+          text: '「<b>▶ 実行</b>」して、重油を<b>85%以上</b>分解できたらクリア！',
+          why: '「Advanced」をONにすると、MDシミュレーションで融合タンパク質が折りたたまれる様子も見られます。',
+          check: () => false }
+      ],
+      example: () => ['promConst1', 'enzFast', 'seqLinker', 'enzStable', 'term1'],
+      learned: 'リンカーで2つの遺伝子をつなぐと、両方の性質をもつ「融合タンパク質」ができます。合成生物学でよく使われるテクニックです。'
+    },
+    {
+      intro: '悪の組織が菌を盗んで重油タンクに入れようとしている！ シグナル分子がない場所では死ぬ、安全な菌にしよう。',
+      steps: [
+        { short: B('promSignalOff') + 'を置く', hl: { tray: 'promSignalOff' },
+          text: '青いブロック' + B('promSignalOff') + 'を置こう。<br><small>前の回路は「全部消す」で消しておこう。</small>',
+          why: 'このプロモーターは、シグナル分子が<b>あるとOFF</b>、<b>ないとON</b>になります。',
+          check: () => hasPart('promSignalOff') },
+        { short: B('metaKill') + 'をつなぐ', hl: { tray: 'metaKill' },
+          text: 'その右に' + B('metaKill') + 'をつなごう。',
+          why: 'キルスイッチは細胞を死なせる遺伝子です。スイッチがONになると菌が死にます。',
+          check: () => startsWith(['promSignalOff', 'metaKill']) },
+        { short: B('term1') + 'をつなぐ', hl: { tray: 'term1' },
+          text: B('term1') + 'をつなごう。',
+          why: 'これで「シグナル分子がないとキルスイッチがONになる」回路ができました。',
+          check: () => startsWith(['promSignalOff', 'metaKill', 'term1']) },
+        { short: 'Labを開く', hl: { el: 'lab' },
+          text: '画面の右はしにある「<b>Lab を表示</b>」を押して、実験室（Lab）を開こう。',
+          why: 'Labでは、菌のまわりの環境（シグナル分子の濃さなど）を変えられます。',
+          check: () => rightPanel.classList.contains('show') || !!stageState.killWithSignal || !!stageState.killNoSignal },
+        { short: 'シグナル分子 60以上 → 生きる', hl: { el: 'slider' },
+          text: 'Labの「<b>シグナル分子</b>」スライダーを<b>60以上</b>にしよう。手をはなすと自動で実行されます。菌は生きているかな？',
+          why: 'シグナル分子は、処理したい海にだけまいておく物質です。そこでは菌は生きて重油を分解できます。',
+          warn: () => stageState.killWithSignal && stageState.killWithSignal.dead
+            ? 'シグナル分子があるのに死んでしまいました。プロモーターが' + B('promSignalOff') + 'になっているか確かめよう。' : null,
+          check: () => !!stageState.killWithSignal && !stageState.killWithSignal.dead },
+        { short: 'シグナル分子 0 → 死ぬ', hl: { el: 'slider' },
+          text: '今度はスライダーを<b>0</b>に戻そう。シグナル分子がないと…？',
+          why: '外に逃げ出した菌は、シグナル分子がないので自分で死にます。これを「バイオコンテインメント（封じ込め）」といいます。',
+          warn: () => stageState.killNoSignal && !stageState.killNoSignal.dead
+            ? 'シグナル分子がないのに生きています。キルスイッチとターミネーターがつながっているか確かめよう。' : null,
+          check: () => !!stageState.killNoSignal && stageState.killNoSignal.dead }
+      ],
+      example: () => ['promSignalOff', 'metaKill', 'term1'],
+      learned: '環境のシグナルで生き死にが切りかわる回路で、組換え菌が外に広がるのを防げます。実際の遺伝子組換え生物の安全対策にも使われる考え方です。'
+    },
+    {
+      intro: 'ここからは自由課題。「読み込み」タブのお手本回路を動かしたり、好きな回路を作ったりしてみよう。',
+      steps: [],
+      example: null,
+      learned: ''
+    }
+  ];
+
+  function guideStepIndex(si){
+    const g = GUIDE[si];
+    if (cleared[si]) return g.steps.length;
+    for (let i = 0; i < g.steps.length; i++) if (!g.steps[i].check()) return i;
+    return g.steps.length;
+  }
+
+  function guideStepsHtml(si){
+    const g = GUIDE[si], cur = guideStepIndex(si);
+    if (!g.steps.length) return '';
+    return '<ol class="guide-steps">' + g.steps.map((st, i) =>
+      '<li class="' + (i < cur ? 'done' : i === cur ? 'now' : 'todo') + '">' +
+        '<span class="gs-mark">' + (i < cur ? '✓' : (i + 1)) + '</span><span>' + st.short + '</span></li>').join('') +
+      '</ol>';
+  }
+
+  function guideTarget(hl){
+    if (!hl) return null;
+    if (hl.tray) {
+      const blk = tray.querySelector('.blk[data-part-id="' + hl.tray + '"]');
+      return blk ? blk.closest('.tray-item-wrap') : null;
+    }
+    if (hl.el === 'run') return runBtn;
+    if (hl.el === 'oil') return oilPanel;
+    if (hl.el === 'lab') return toggleRight;
+    if (hl.el === 'slider') return rightPanel.classList.contains('show') ? drugA.closest('.drug-a') : toggleRight;
+    return null;
+  }
+
+  function setGuideHighlight(el){
+    if (el === guideHL) return;
+    if (guideHL) guideHL.classList.remove('guide-glow');
+    guideHL = el;
+    if (!el) return;
+    el.classList.add('guide-glow');
+    if (tray.contains(el)) el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  }
+
+  function renderGuide(){
+    if (!guideReady) return;
+    const si = quePage, g = GUIDE[si], stage = STAGES[si];
+    const cur = guideStepIndex(si), done = cleared[si], total = g.steps.length;
+    const chips = STAGES.map((s, i) =>
+      '<button class="guide-chip ' + (i === si ? 'current ' : '') + (cleared[i] ? 'cleared' : '') + '" data-i="' + i + '" title="' + s.title + '">' +
+        (cleared[i] ? '✓' : (i < 4 ? i + 1 : '★')) + '</button>').join('');
+
+    if (guideMin) {
+      guideEl.className = 'guide min';
+      guideEl.innerHTML = '<button class="guide-open" id="guideOpen">🧭 ガイド ・ ' + stage.title.split(':')[0] +
+        (total ? '（' + (done ? 'クリア' : Math.min(cur + 1, total) + '/' + total) + '）' : '') + '</button>';
+      guideEl.querySelector('#guideOpen').addEventListener('click', () => { guideMin = false; renderGuide(); });
+    } else {
+      let now = '';
+      if (done && total) {
+        now = '<div class="guide-now clear"><div class="guide-clear-title">🎉 ' + stage.title.split(':')[0] + ' クリア！</div>' +
+          '<div class="guide-learned"><b>わかったこと</b><br>' + g.learned + '</div>' +
+          (si < 3 ? '<button class="guide-next" id="guideNext">次のステージへ ▶</button>' : '<div class="guide-learned">全ステージクリア、おめでとう！ 自由に回路を作ってみよう。</div>') +
+        '</div>';
+      } else if (total) {
+        const st = g.steps[Math.min(cur, total - 1)];
+        const warn = st.warn && st.warn();
+        now = '<div class="guide-now"><div class="guide-now-label">ステップ ' + (cur + 1) + ' / ' + total + '</div>' +
+          '<div class="guide-text">👉 ' + st.text + '</div>' +
+          (warn ? '<div class="guide-warn">⚠️ ' + warn + '</div>' : '') +
+          '<div class="guide-why">💡 ' + st.why + '</div></div>';
+      }
+      guideEl.className = 'guide' + (done && total ? ' is-clear' : '');
+      guideEl.innerHTML =
+        '<div class="guide-head"><span class="guide-badge">🧭 ガイド</span><span class="guide-chips">' + chips + '</span>' +
+          '<button class="guide-x" id="guideHide" title="小さくする">－</button></div>' +
+        '<div class="guide-title">' + stage.title + '</div>' +
+        '<div class="guide-intro">' + g.intro +
+          ' <button class="guide-link" id="guideStoryBtn">' + (guideStory ? 'ストーリーを閉じる' : 'ストーリーを読む') + '</button></div>' +
+        (guideStory ? '<div class="guide-story">' + (advanced ? stage.advancedstory : stage.story).replace(/\n/g, '<br>') + '</div>' : '') +
+        guideStepsHtml(si) + now +
+        (g.example && !done ? '<div class="guide-actions"><button id="guideExample" title="いまの回路を消して、このステップのお手本を置きます">🧩 わからないときは お手本を置く</button></div>' : '');
+      guideEl.querySelector('#guideHide').addEventListener('click', () => { guideMin = true; renderGuide(); });
+      guideEl.querySelector('#guideStoryBtn').addEventListener('click', () => { guideStory = !guideStory; renderGuide(); });
+      const nx = guideEl.querySelector('#guideNext');
+      if (nx) nx.addEventListener('click', () => gotoStage(si + 1));
+      const ex = guideEl.querySelector('#guideExample');
+      if (ex) ex.addEventListener('click', () => placeExample(g.example()));
+      guideEl.querySelectorAll('.guide-chip').forEach(b => b.addEventListener('click', () => gotoStage(Number(b.dataset.i))));
+    }
+    const st = !done && total ? g.steps[Math.min(cur, total - 1)] : null;
+    setGuideHighlight(st ? guideTarget(st.hl) : null);
+  }
+
+  function gotoStage(i){
+    quePage = i;
+    guideStory = false;
+    renderGuide();
+    if (activeTab === 'questions') renderQuestions();
+  }
+
+  // 回路を消して、お手本の回路をプログラムの左下に置く
+  function placeExample(ids){
+    blocks.forEach(b => b.el.remove());
+    blocks.clear();
+    const y = Math.max(140, program.clientHeight - 90);
+    const made = ids.map(id => createPlaced(id, 12, y));
+    for (let i = 0; i < made.length - 1; i++) { made[i].next = made[i + 1].id; made[i + 1].prev = made[i].id; }
+    positionGroup(made.map(b => b.id), 12, y);
+    refreshBlockList();
+    updateHint();
+  }
+
+  function showToast(html){
+    let t = document.getElementById('guideToast');
+    if (!t) { t = document.createElement('div'); t.id = 'guideToast'; t.className = 'guide-toast'; document.body.appendChild(t); }
+    t.innerHTML = html;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  // 実行のたびに全ステージを判定し、新しくクリアしたらお祝いする
+  function evaluateStages(ctx){
+    STAGES.forEach((stage, i) => {
+      if (cleared[i] || !GUIDE[i].steps.length) return;
+      if (stage.judge(ctx).state === 'pass') {
+        cleared[i] = true;
+        if (i === quePage) showToast('🎉 ' + stage.title.split(':')[0] + ' クリア！');
+      }
+    });
+  }
+
   let activeTab = 'tutorial';
   let selectedProteinIdx = 0, selectedRnaIdx = 0;
 
@@ -988,6 +1267,7 @@
       '<h3 class="stage-title">' + stage.title + (cleared[quePage] ? ' <span class="stage-clear-badge">クリア</span>' : '') + '</h3>' +
       '<div class="stage-story">' + story.replace(/\n/g, '<br>') + '</div>' +
       '<div class="stage-goal"><span class="stage-goal-tag">目標</span>' + stage.goal + '</div>' +
+      (GUIDE[quePage].steps.length ? '<div class="stage-guide"><div class="stage-guide-h">進め方（プログラム画面左上のガイドと同じ）</div>' + guideStepsHtml(quePage) + '</div>' : '') +
       '<div class="stage-verdict ' + verdict.state + '">' + VERDICT_ICON[verdict.state] + ' ' + verdict.msg + '</div>' +
       (quePage === 1 || quePage === 2 ? enzymeComparisonTable() : '') +
       '<div class="q-nav">' +
@@ -997,10 +1277,10 @@
       '</div>';
 
     const prev = document.getElementById('qPrev'), next = document.getElementById('qNext');
-    if (prev) prev.addEventListener('click', () => { quePage--; renderQuestions(); });
-    if (next) next.addEventListener('click', () => { quePage++; renderQuestions(); });
+    if (prev) prev.addEventListener('click', () => gotoStage(quePage - 1));
+    if (next) next.addEventListener('click', () => gotoStage(quePage + 1));
     tabContent.querySelectorAll('.stage-dot').forEach(el => {
-      el.addEventListener('click', () => { quePage = Number(el.dataset.i); renderQuestions(); });
+      el.addEventListener('click', () => gotoStage(Number(el.dataset.i)));
     });
   }
 
@@ -1317,23 +1597,74 @@
       '<span class="chip">回転速度 ' + s.rate.toFixed(1) + ' /分</span>';
   }
 
-  let mdMode = 'cell';
+  let mdMode = 'tx3d', txChainIdx = 0;
+
+  function stopAllMD(){
+    stopMD();
+    if (window.EnzymeMD && window.EnzymeMD.View) window.EnzymeMD.View.unmount();
+    if (window.TxAnim) window.TxAnim.unmount();
+  }
+
+  // ---------- 転写・翻訳の3D分子アニメーション（transcription.js に実装）----------
+  function renderMDTx(){
+    const host = document.getElementById('mdModeHost');
+    if (txChainIdx >= lastResults.length) txChainIdx = 0;
+    const r = lastResults[txChainIdx];
+    host.innerHTML =
+      '<div class="md-wrap">' +
+        '<div class="md-desc">組んだ回路をDNAの二重らせんとして並べ、<b>転写</b>（DNA→mRNA）と<b>翻訳</b>（mRNA→タンパク質）を分子1つ1つの動きで見せます。' +
+          '小さな分子や鎖のゆらぎはブラウン運動（ランジュバン方程式）で計算し、RNAポリメラーゼがプロモーターに結合できる確率は上のシミュレーションの転写速度から決めています。' +
+          '分子の形は簡略化したものです。</div>' +
+        (lastResults.length > 1
+          ? '<div class="p3d-protein-select" id="txSelect">' + lastResults.map((x, i) =>
+              '<button data-i="' + i + '" class="' + (i === txChainIdx ? 'active' : '') + '">回路' + (i + 1) + ': ' + x.promLabel + '</button>').join('') + '</div>'
+          : '') +
+        '<div id="txHost"></div>' +
+        '<div class="enz-legend">' +
+          '<span><i style="background:#4f82c4"></i>RNAポリメラーゼ</span>' +
+          '<span><i style="background:#e3c565"></i>σ因子</span>' +
+          '<span><i style="background:#f5a623"></i>mRNA</span>' +
+          '<span><i style="background:#ffb04a;border-radius:2px"></i>NTP（ヌクレオチド）</span>' +
+          '<span><i style="background:#b98fd6"></i>リボソーム</span>' +
+          '<span><i style="background:#6fcfb0"></i>tRNA</span>' +
+          '<span>塩基 <i style="background:#ff6b6b"></i>A <i style="background:#ffd43b"></i>T <i style="background:#f783ac"></i>U <i style="background:#69db7c"></i>G <i style="background:#4dabf7"></i>C</span>' +
+          '<span>DNAの骨格はブロックと同じ色</span>' +
+        '</div>' +
+      '</div>';
+    host.querySelectorAll('#txSelect button').forEach(b => b.addEventListener('click', () => {
+      txChainIdx = Number(b.dataset.i); renderMDTx();
+    }));
+    const ok = window.TxAnim && window.TxAnim.mount(document.getElementById('txHost'), {
+      blocks: r.blocks, promKind: r.promKind, k_tx: r.k_tx, signal: signalLevel(), label: r.promLabel
+    });
+    if (!ok) host.innerHTML += '<div class="empty-note">⚠️ 3D描画ライブラリ(Three.js)を読み込めませんでした。</div>';
+  }
 
   function renderMD(){
     if (lastResults.length === 0) {
       tabContent.innerHTML = '<div class="empty-note">まだ回路がありません。回路を組んで「実行」を押すと、分子シミュレーションを表示します。</div>';
       return;
     }
+    const modes = [
+      ['tx3d', '🎬 転写と翻訳（3D）'],
+      ['cell', '🧫 細胞内（2D）'],
+      ['protein3d', '🧬 酵素の動き（3D）']
+    ];
     tabContent.innerHTML =
-      '<div class="md-mode-toggle">' +
-        '<button class="md-mode-btn ' + (mdMode === 'cell' ? 'active' : '') + '" id="mdModeCellBtn">🧫 細胞内シミュレーション（2D）</button>' +
-        '<button class="md-mode-btn ' + (mdMode === 'protein3d' ? 'active' : '') + '" id="mdModeP3dBtn">🧬 酵素の可動部分と触媒（3D）</button>' +
+      '<div class="md-mode-toggle">' + modes.map(m =>
+        '<button class="md-mode-btn ' + (mdMode === m[0] ? 'active' : '') + '" data-mode="' + m[0] + '">' + m[1] + '</button>').join('') +
       '</div>' +
       '<div id="mdModeHost"></div>';
-    document.getElementById('mdModeCellBtn').addEventListener('click', () => { if (mdMode !== 'cell') { if (window.EnzymeMD && window.EnzymeMD.View) window.EnzymeMD.View.unmount(); mdMode = 'cell'; renderMD(); } });
-    document.getElementById('mdModeP3dBtn').addEventListener('click', () => { if (mdMode !== 'protein3d') { stopMD(); mdMode = 'protein3d'; renderMD(); } });
+    tabContent.querySelectorAll('.md-mode-btn').forEach(b => b.addEventListener('click', () => {
+      if (mdMode === b.dataset.mode) return;
+      stopAllMD();
+      mdMode = b.dataset.mode;
+      renderMD();
+    }));
 
+    stopAllMD();
     if (mdMode === 'cell') renderMDCell();
+    else if (mdMode === 'tx3d') renderMDTx();
     else renderMDProtein3D();
   }
 
@@ -1380,7 +1711,7 @@
 
   tabsBar.querySelectorAll('.tab-item').forEach(el => {
     el.addEventListener('click', () => {
-      if (activeTab === 'md' && el.dataset.tab !== 'md') { stopMD(); if (window.EnzymeMD && window.EnzymeMD.View) window.EnzymeMD.View.unmount(); }
+      if (activeTab === 'md' && el.dataset.tab !== 'md') stopAllMD();
       tabsBar.querySelectorAll('.tab-item').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
       activeTab = el.dataset.tab;
@@ -1397,6 +1728,7 @@
     b1.next = b2.id; b2.prev = b1.id;
     b2.next = b3.id; b3.prev = b2.id;
     positionGroup([b1.id, b2.id, b3.id], 60, 140);
+    refreshBlockList();
     updateHint();
     rightPanel.classList.remove('show');
     toggleRight.textContent = 'Lab を表示';
@@ -1406,4 +1738,6 @@
   renderOilPanel(null);
   renderTutorial();
   updateHint();
+  guideReady = true;
+  renderGuide();
 })();

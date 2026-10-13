@@ -507,25 +507,33 @@
     lobeA:  0xf97316, lobeB: 0xfb923c, hinge: 0xb45309,
     linker: 0x94a3b8, stab:  0x14b8a6
   };
-  const C_ACTIVE = 0xfde047, C_SUB = 0x27272a, C_PROD = 0xa1a1aa;
-  const BEAD_R = 1.55, BOND_R = 0.42;
+  const C_ACTIVE = 0xfde047, C_SUB = 0x3f3f46, C_PROD = 0xa1a1aa;
+  // 粒子を結合長(3.8)より大きめにして重ね、でこぼこした分子表面のように見せる
+  const BEAD_R = 2.35, BOND_R = 0.9;
+  const ML = window.MolLook;
+  const mat = (hex, o) => ML ? ML.material(hex, o) :
+    new THREE.MeshStandardMaterial(Object.assign({ color: hex, roughness: 0.5 }, o && o.emissive != null ? { emissive: o.emissive } : {}));
 
   let host=null, renderer=null, scene=null, camera=null, raf=null, running=false;
   let eng=null, spec=null;
   let beadMeshes={}, bondMesh=null, subMesh=null, siteMesh=null;
   let orbit={theta:0.9, phi:1.15, dist:95}, dragging=false, lastPtr=null;
   let viewTarget={x:0,y:0,z:0};
-  let substeps=3, flash=0, tRate=[], onStats=null;
+  let substeps=3, flash=0, tRate=[], onStats=null, backdrop=null, lastFrame=0;
 
   const M4 = () => new THREE.Matrix4();
 
   function makeScene(){
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a1210);
     camera = new THREE.PerspectiveCamera(45, 1, 0.5, 900);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const l1=new THREE.DirectionalLight(0xffffff,0.95); l1.position.set(22,30,26); scene.add(l1);
-    const l2=new THREE.DirectionalLight(0x88bbff,0.35); l2.position.set(-20,-12,-16); scene.add(l2);
+    if (ML) {
+      ML.setupScene(scene, 0.0075);
+      backdrop = new ML.Backdrop(scene, 30, 150);
+    } else {
+      scene.background = new THREE.Color(0x0a1210);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+      const l1=new THREE.DirectionalLight(0xffffff,0.95); l1.position.set(22,30,26); scene.add(l1);
+    }
   }
 
   function disposeMesh(m){ if(!m) return; scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
@@ -540,30 +548,26 @@
     Object.keys(groups).forEach(key=>{
       const idx = groups[key].filter(i=>!isActive.has(i));
       if(!idx.length) return;
-      const geo=new THREE.IcosahedronGeometry(BEAD_R,1);
-      const mat=new THREE.MeshStandardMaterial({color:COLOR[key]||0x999999,roughness:0.45,metalness:0.06});
-      const m=new THREE.InstancedMesh(geo,mat,idx.length);
+      const geo=new THREE.IcosahedronGeometry(BEAD_R,2);
+      const m=new THREE.InstancedMesh(geo,mat(COLOR[key]||0x999999,{roughness:0.6,rimStr:0.6}),idx.length);
       m.frustumCulled=false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       m.userData.idx=idx; scene.add(m); beadMeshes[key]=m;
     });
     // 活性部位は発光させて目立たせる
     if(spec.active.length){
-      const geo=new THREE.IcosahedronGeometry(BEAD_R*1.18,1);
-      const mat=new THREE.MeshStandardMaterial({color:C_ACTIVE,emissive:0x8a6d00,roughness:0.3});
-      siteMesh=new THREE.InstancedMesh(geo,mat,spec.active.length);
+      const geo=new THREE.IcosahedronGeometry(BEAD_R*1.08,2);
+      siteMesh=new THREE.InstancedMesh(geo,mat(C_ACTIVE,{emissive:0x8a6d00,roughness:0.35,rim:0xfff3b0,rimStr:0.8}),spec.active.length);
       siteMesh.frustumCulled=false; siteMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       siteMesh.userData.idx=spec.active.slice(); scene.add(siteMesh);
     }
     // 骨格
     const bgeo=new THREE.CylinderGeometry(BOND_R,BOND_R,1,7,1);
-    const bmat=new THREE.MeshStandardMaterial({color:0xcbd5e1,roughness:0.6});
-    bondMesh=new THREE.InstancedMesh(bgeo,bmat,spec.N-1);
+    bondMesh=new THREE.InstancedMesh(bgeo,mat(0xcbd5e1,{roughness:0.6,rimStr:0.3}),spec.N-1);
     bondMesh.frustumCulled=false; bondMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     scene.add(bondMesh);
     // 基質
-    const sgeo=new THREE.IcosahedronGeometry(BEAD_R*0.92,1);
-    const smat=new THREE.MeshStandardMaterial({color:C_SUB,roughness:0.55,metalness:0.15});
-    subMesh=new THREE.InstancedMesh(sgeo,smat,12*window.EnzymeMD.SUB_LEN);
+    const sgeo=new THREE.IcosahedronGeometry(BEAD_R*0.78,1);
+    subMesh=new THREE.InstancedMesh(sgeo,mat(0xffffff,{vertexColor:true,roughness:0.5,rim:0xffd9a0,rimStr:0.7}),12*window.EnzymeMD.SUB_LEN);
     subMesh.frustumCulled=false;
     subMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     subMesh.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(12*window.EnzymeMD.SUB_LEN*3),3);
@@ -571,7 +575,7 @@
   }
 
   const _m=new THREE.Matrix4(), _q=new THREE.Quaternion(), _v=new THREE.Vector3(),
-        _up=new THREE.Vector3(0,1,0), _s=new THREE.Vector3(1,1,1), _c=new THREE.Color();
+        _up=new THREE.Vector3(0,1,0), _s=new THREE.Vector3(1,1,1), _c=new THREE.Color(), _vt=new THREE.Vector3();
 
   function sync(){
     const pos=eng.pos;
@@ -608,7 +612,7 @@
         if(n>=subMesh.count) return;
         _m.makeTranslation(b.x,b.y,b.z);
         subMesh.setMatrixAt(n,_m);
-        _c.setHex(col); subMesh.setColorAt(n,_c);
+        _c.setHex(col); if (ML) _c.convertSRGBToLinear(); subMesh.setColorAt(n,_c);
         n++;
       });
     });
@@ -630,6 +634,8 @@
     const cz=orbit.dist*Math.sin(orbit.phi)*Math.sin(orbit.theta);
     camera.position.set(viewTarget.x+cx, viewTarget.y+cy, viewTarget.z+cz);
     camera.lookAt(viewTarget.x, viewTarget.y, viewTarget.z);
+    const now=performance.now(), fdt=lastFrame?Math.min(0.05,(now-lastFrame)/1000):1/60; lastFrame=now;
+    if(backdrop) backdrop.update(_vt.set(viewTarget.x,viewTarget.y,viewTarget.z), fdt, camera);
     renderer.render(scene,camera);
     if(onStats) onStats({
       cleft: eng.cleftWidth(), hinge: eng.hingeAngle(), Q: eng.Q(),
@@ -659,6 +665,7 @@
     if(!renderer){
       makeScene();
       renderer=new THREE.WebGLRenderer({antialias:true});
+      if (ML) ML.setupRenderer(renderer);
       attach(renderer.domElement);
     }
     if(renderer.domElement.parentElement!==host) host.appendChild(renderer.domElement);

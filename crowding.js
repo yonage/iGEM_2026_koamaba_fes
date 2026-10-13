@@ -284,8 +284,9 @@
 
   function buildScene(){
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x070d12);
     camera = new THREE.PerspectiveCamera(42, 1, 1, 4000);
+    if (window.MolLook) { window.MolLook.setupScene(scene, 0.002); return; }
+    scene.background = new THREE.Color(0x070d12);
     scene.add(new THREE.AmbientLight(0xffffff, 0.62));
     const d1 = new THREE.DirectionalLight(0xffffff, 0.85); d1.position.set(1, 1, 1); scene.add(d1);
     const d2 = new THREE.DirectionalLight(0x7fb6ff, 0.35); d2.position.set(-1, -0.6, -0.8); scene.add(d2);
@@ -300,10 +301,13 @@
       // 小さい粒子ほど数が多いのでポリゴンを落とす
       const detail = s.r > 7 ? 2 : (s.r > 4 ? 1 : 0);
       const geo = new THREE.IcosahedronGeometry(s.r, detail);
-      const mat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(s.color), roughness: 0.5, metalness: 0.05,
-        transparent: s.key === 'protein', opacity: s.key === 'protein' ? 0.85 : 1
-      });
+      const mat = window.MolLook
+        ? window.MolLook.material(s.color, { roughness: 0.6, rimStr: s.key === 'protein' ? 0.35 : 0.6,
+            transparent: s.key === 'protein', opacity: s.key === 'protein' ? 0.85 : 1 })
+        : new THREE.MeshStandardMaterial({
+            color: new THREE.Color(s.color), roughness: 0.5, metalness: 0.05,
+            transparent: s.key === 'protein', opacity: s.key === 'protein' ? 0.85 : 1
+          });
       const mesh = new THREE.InstancedMesh(geo, mat, s.count);
       mesh.frustumCulled = false;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -418,6 +422,8 @@
   function rebuild(L){
     sim.build(L, extraSpecies);
     orbit.dist = L * 2.5;
+    // 箱の手前と奥で霧の濃さが変わり、奥行きが分かる程度に
+    if (scene.fog) scene.fog.density = 0.6 / (L * 2.5);
     rebuildMeshes();
     buildLegend();
     updateInstances();
@@ -437,6 +443,7 @@
     if (!renderer) {
       buildScene();
       renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      if (window.MolLook) window.MolLook.setupRenderer(renderer);
       overlay.querySelector('#cwCanvas').appendChild(renderer.domElement);
       attachOrbit(renderer.domElement);
       window.addEventListener('resize', resize);

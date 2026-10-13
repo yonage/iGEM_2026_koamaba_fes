@@ -310,3 +310,139 @@
   .enz-legend{display:flex; flex-wrap:wrap; gap:9px 16px; font-size:11.5px; color:#555;}
   .enz-legend span{display:inline-flex; align-items:center; gap:5px;}
   .enz-legend i{width:10px; height:10px; border-radius:50%; display:inline-block; flex-shrink:0;}
+
+  /* ---------- ガイド（ステージ内チュートリアル）---------- */
+  .program-hint{align-items:flex-end; padding-bottom:84px;}
+  .guide{
+    position:absolute; top:12px; left:12px; z-index:60; width:340px; max-width:calc(100% - 24px);
+    max-height:calc(100% - 90px); overflow-y:auto;
+    background:#fff; border:2px solid #1de9b6; border-radius:14px; padding:10px 12px 12px;
+    box-shadow:0 8px 22px rgba(0,0,0,.14); font-size:12.5px; line-height:1.65;
+  }
+  .guide.is-clear{border-color:#f9a825;}
+  .guide.min{width:auto; padding:0; border:none; background:none; box-shadow:none; overflow:visible;}
+  .guide-open{
+    background:#0f231d; color:#fff; border:none; border-radius:20px; padding:8px 14px;
+    font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.2);
+  }
+  .guide-head{display:flex; align-items:center; gap:6px; margin-bottom:6px;}
+  .guide-badge{font-weight:700; font-size:12px; color:#0b7c4d; white-space:nowrap;}
+  .guide-chips{display:flex; gap:4px; flex:1;}
+  .guide-chip{
+    width:22px; height:22px; border-radius:50%; border:1px solid #ccc; background:#f2f2f2; color:#888;
+    font-size:10.5px; font-weight:700; cursor:pointer; padding:0; font-family:inherit;
+  }
+  .guide-chip.current{border-color:#111; color:#111; background:#fff;}
+  .guide-chip.cleared{background:#1de9b6; border-color:#0b9e80; color:#06412f;}
+  .guide-x{border:1px solid #ccc; background:#fff; border-radius:7px; width:24px; height:22px; cursor:pointer; font-weight:700; color:#777; padding:0;}
+  .guide-title{font-weight:700; font-size:13.5px; margin-bottom:2px;}
+  .guide-intro{color:#555; font-size:12px; margin-bottom:6px;}
+  .guide-link{border:none; background:none; color:#0066cc; cursor:pointer; font-family:inherit; font-size:11.5px; padding:0; text-decoration:underline;}
+  .guide-story{background:#f6f8fa; border-radius:8px; padding:7px 9px; font-size:11.5px; color:#444; margin-bottom:6px;}
+  .guide-steps{list-style:none; margin:0 0 8px; padding:0; display:flex; flex-direction:column; gap:3px;}
+  .guide-steps li{display:flex; align-items:flex-start; gap:7px; font-size:12px; color:#999;}
+  .guide-steps li.done{color:#0b7c4d;}
+  .guide-steps li.now{color:#111; font-weight:700;}
+  .gs-mark{
+    width:18px; height:18px; flex-shrink:0; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:700; background:#eee; color:#999; margin-top:1px;
+  }
+  .guide-steps li.done .gs-mark{background:#1de9b6; color:#06412f;}
+  .guide-steps li.now .gs-mark{background:#111; color:#fff;}
+  .guide-now{background:#f0fdf9; border:1px solid #a7f3d8; border-radius:10px; padding:8px 10px;}
+  .guide-now.clear{background:#fff8e1; border-color:#ffe082;}
+  .guide-now-label{font-size:10.5px; color:#0b7c4d; font-weight:700;}
+  .guide-text{font-size:13px; color:#111; margin:2px 0 4px;}
+  .guide-text small{color:#666; font-size:11px;}
+  .guide-why{font-size:11.5px; color:#5b6b7a;}
+  .guide-warn{font-size:11.5px; color:#9b2c2c; background:#fdeeee; border-radius:7px; padding:4px 8px; margin:4px 0;}
+  .guide-clear-title{font-size:15px; font-weight:700; margin-bottom:4px;}
+  .guide-learned{font-size:12px; color:#5b4a14; margin-bottom:6px;}
+  .guide-next{
+    background:#f9a825; color:#fff; border:none; border-radius:9px; padding:8px 14px; font-family:inherit;
+    font-weight:700; font-size:12.5px; cursor:pointer;
+  }
+  .guide-next:hover{background:#f57f17;}
+  .guide-actions{margin-top:8px;}
+  .guide-actions button{
+    background:#fff; border:1px dashed #aaa; border-radius:8px; padding:5px 10px; font-family:inherit;
+    font-size:11px; color:#666; cursor:pointer;
+  }
+  .guide-actions button:hover{background:#f6f8fa;}
+
+  /* 次に使うブロック・ボタンを光らせる */
+  @keyframes guidePulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(29,233,182,.0), 0 0 0 3px rgba(29,233,182,.9);}
+    50%{box-shadow:0 0 0 8px rgba(29,233,182,.25), 0 0 0 3px rgba(29,233,182,.9);}
+  }
+  .guide-glow{animation:guidePulse 1.3s ease-in-out infinite; border-radius:12px; position:relative;}
+  .tray-item-wrap.guide-glow{background:#e6fff7;}
+  .run-btn.guide-glow{border-radius:30px;}
+  .lab-toggle-btn.guide-glow{border-radius:8px;}
+  .drug-a.guide-glow{border-radius:20px;}
+
+  .guide-toast{
+    position:fixed; left:50%; top:70px; transform:translate(-50%, -20px); opacity:0; pointer-events:none;
+    background:#0f231d; color:#fff; padding:12px 22px; border-radius:30px; font-size:16px; font-weight:700;
+    box-shadow:0 10px 30px rgba(0,0,0,.25); transition:opacity .3s, transform .3s; z-index:600;
+  }
+  .guide-toast.show{opacity:1; transform:translate(-50%, 0);}
+
+  .stage-guide{background:#f6f8fa; border-radius:9px; padding:8px 10px; margin-bottom:12px;}
+  .stage-guide-h{font-size:11px; color:#888; font-weight:700; margin-bottom:4px;}
+  .stage-guide .guide-steps{margin:0;}
+
+  /* ---------- 転写・翻訳の3D分子アニメーション ---------- */
+  .md-mode-toggle{flex-wrap:wrap;}
+  .tx-root{display:flex; flex-direction:column; gap:8px;}
+  .tx-shell{position:relative; border-radius:10px; overflow:hidden; background:#050b14;}
+  .tx-mount{width:100%; aspect-ratio:560/400; touch-action:none; cursor:grab;}
+  .tx-mount:active{cursor:grabbing;}
+  .tx-mount canvas{display:block; width:100% !important; height:100% !important;}
+  .tx-shell:fullscreen{border-radius:0;}
+  .tx-shell:fullscreen .tx-mount{aspect-ratio:auto; height:100%;}
+  .tx-shell:fullscreen .tx-caption{font-size:16px; padding:14px 20px; max-width:900px; left:50%; transform:translateX(-50%); right:auto; width:calc(100% - 40px);}
+  .tx-vignette{position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%);}
+  .tx-map{
+    position:absolute; top:8px; left:10px; right:46px; height:18px; display:flex; border-radius:5px; overflow:visible;
+    pointer-events:none; opacity:.92;
+  }
+  .tx-seg{
+    font-size:9.5px; color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center;
+    overflow:hidden; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.5); min-width:0;
+    border-right:1px solid rgba(0,0,0,.35);
+  }
+  .tx-seg:first-child{border-radius:5px 0 0 5px;}
+  .tx-seg:nth-last-child(2){border-radius:0 5px 5px 0; border-right:none;}
+  .tx-marker{
+    position:absolute; top:-5px; width:0; height:0; margin-left:-6px; display:none;
+    border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid #fff;
+    transition:left .15s linear;
+  }
+  .tx-marker::after{content:''; position:absolute; left:-1px; top:-1px; width:2px; height:24px; background:rgba(255,255,255,.8);}
+  .tx-marker.ribo{border-top-color:#d2b0e8;}
+  .tx-caption{
+    position:absolute; left:10px; right:10px; bottom:10px; background:rgba(5,11,20,.78); color:#e6f0f8;
+    border:1px solid rgba(154,215,255,.25); border-radius:10px; padding:8px 12px; font-size:12px; line-height:1.65;
+    display:flex; gap:8px; align-items:flex-start; pointer-events:none;
+  }
+  .tx-caption small{color:#9fb8cc; font-size:10.5px;}
+  .tx-step{
+    flex-shrink:0; min-width:22px; height:22px; border-radius:11px; background:#1de9b6; color:#06412f; font-weight:700;
+    display:inline-flex; align-items:center; justify-content:center; font-size:12px; padding:0 4px;
+  }
+  .tx-fs{
+    position:absolute; top:6px; right:8px; width:30px; height:24px; border-radius:7px; border:1px solid rgba(255,255,255,.3);
+    background:rgba(5,11,20,.6); color:#fff; cursor:pointer; font-size:14px; line-height:1; padding:0;
+  }
+  .tx-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .tx-bar button{background:#fff; border:1px solid #aaa; border-radius:8px; padding:5px 10px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit;}
+  .tx-bar button.active{background:#0f231d; color:#fff; border-color:#0f231d;}
+  .tx-speed{display:inline-flex; align-items:center; gap:4px; font-size:11.5px; color:#666; font-weight:700;}
+  .tx-speed button{padding:5px 8px;}
+  .tx-stats{font-size:11.5px; color:#666;}
+  /* 狭い画面ではガイドを「いまのステップ」だけに絞る */
+  @media (max-width:600px){
+    .guide .guide-steps, .guide .guide-intro{display:none;}
+    .guide{width:calc(100% - 24px); padding:8px 10px;}
+  }
