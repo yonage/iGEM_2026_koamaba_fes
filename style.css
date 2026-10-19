@@ -446,3 +446,46 @@
     .guide .guide-steps, .guide .guide-intro{display:none;}
     .guide{width:calc(100% - 24px); padding:8px 10px;}
   }
+
+  /* ガイドの移動（見出しをつかんでドラッグ） */
+  .guide-head{cursor:grab; touch-action:none; user-select:none;}
+  .guide.dragging{box-shadow:0 14px 34px rgba(0,0,0,.28); opacity:.96;}
+  .guide.dragging .guide-head{cursor:grabbing;}
+  .guide-grip{color:#9aa5b1; font-size:13px; line-height:1; letter-spacing:-1px;}
+  .guide-open{touch-action:none;}
+
+  /* ---------- 分子の動き（MDシミュレーション）のポップアップ ---------- */
+  .preview-md-btn{
+    background:#0f231d; color:#fff; border:none; border-radius:9px; padding:8px 12px; font-family:inherit;
+    font-size:12px; font-weight:700; cursor:pointer; align-self:flex-start;
+  }
+  .preview-md-btn:hover{background:#1d3d33;}
+  .preview-md-btn[hidden]{display:none;}
+  .md-pop{
+    position:fixed; inset:0; z-index:450; background:rgba(3,8,14,.62); display:flex;
+    align-items:center; justify-content:center; padding:16px;
+  }
+  .md-pop[hidden]{display:none;}
+  .md-pop-win{
+    width:min(1080px, 100%); max-height:100%; display:flex; flex-direction:column;
+    background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.4);
+  }
+  .md-pop-head{display:flex; align-items:center; gap:12px; padding:10px 14px; background:#0f231d; color:#fff; flex-shrink:0;}
+  .md-pop-title{flex:1; font-weight:700; font-size:14px;}
+  .md-pop-close{
+    background:#1d3d33; color:#fff; border:1px solid #2f5a4c; border-radius:8px; padding:6px 12px;
+    font-family:inherit; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .md-pop-close:hover{background:#2a5246;}
+  .md-pop-body{padding:12px 14px 16px; overflow-y:auto; font-size:13px; line-height:1.7;}
+  .md-pop-empty{text-align:center; padding:40px 10px; font-size:13.5px; line-height:2;}
+  .md-pop .tx-mount{aspect-ratio:auto; height:min(60vh, 600px);}
+  .md-pop .tx-shell:fullscreen .tx-mount{height:100%;}
+  .md-pop .p3d-mount{aspect-ratio:auto; height:min(56vh, 540px);}
+  .md-pop #mdCanvas{max-width:900px; margin:0 auto;}
+  .md-pop .md-canvas-shell{max-width:900px; margin:0 auto; width:100%;}
+  @media (max-width:600px){
+    .md-pop{padding:0;}
+    .md-pop-win{border-radius:0; height:100%;}
+    .md-pop .tx-mount{height:52vh;}
+  }

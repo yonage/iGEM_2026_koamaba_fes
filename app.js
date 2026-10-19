@@ -90,12 +90,8 @@
   let advanced = false;
   // ガイド（下の方で定義）が使えるようになったら true。初期化中の呼び出しを無視するため
   let guideReady = false;
-  const mdTab = tabsBar.querySelector('[data-tab="md"]');
-  if (mdTab) mdTab.hidden = true;
-
   advancedBtn.addEventListener('click', () => {
     advanced =! advanced;
-    if (mdTab) mdTab.hidden = !advanced;
     if (activeTab === 'questions') renderQuestions();
     if (guideReady) renderGuide();
   });
@@ -104,7 +100,11 @@
   toggleRight.addEventListener('click', () => {
     const show = rightPanel.classList.toggle('show');
     toggleRight.textContent = show ? 'Lab を隠す' : 'Lab を表示';
-    if (guideReady) renderGuide();
+    if (guideReady) {
+      renderGuide();
+      // パネルの開閉アニメーションのあと、ガイドがはみ出していれば戻す
+      setTimeout(renderGuide, 260);
+    }
   });
 
   // ---------- Environment controls ----------
@@ -598,6 +598,8 @@
       renderPreview(lastResults);
       initMDParticles(lastResults);
       refreshActiveTab();
+      if (mdPopOpen) renderMD();
+      previewMD.hidden = !lastResults.length;
       renderGuide();
       runStatus.textContent = lastResults.length ? '実行完了（' + lastResults.length + '回路）' : '回路が組まれていません';
     }, 650);
@@ -613,7 +615,9 @@
     renderPreview(lastResults);
     setBacteriumVisual(bacteriumImg, 0, 0);
     runStatus.style.display = 'none';
+    previewMD.hidden = true;
     refreshActiveTab();
+    if (mdPopOpen) renderMD();
   }
   document.getElementById('clearBtn').addEventListener('click', clearProgram);
 
@@ -974,7 +978,7 @@
           check: () => startsWith(['promConst1', 'enzFast', 'seqLinker', 'enzStable', 'term1']) },
         { short: '実行して85%以上でクリア', hl: { el: 'run' },
           text: '「<b>▶ 実行</b>」して、重油を<b>85%以上</b>分解できたらクリア！',
-          why: '「Advanced」をONにすると、MDシミュレーションで融合タンパク質が折りたたまれる様子も見られます。',
+          why: '実行したあと上の「🎬 分子の動きを見る」を押すと、融合タンパク質が作られて折りたたまれる様子が見られます。',
           check: () => false }
       ],
       example: () => ['promConst1', 'enzFast', 'seqLinker', 'enzStable', 'term1'],
@@ -1073,7 +1077,7 @@
       guideEl.className = 'guide min';
       guideEl.innerHTML = '<button class="guide-open" id="guideOpen">🧭 ガイド ・ ' + stage.title.split(':')[0] +
         (total ? '（' + (done ? 'クリア' : Math.min(cur + 1, total) + '/' + total) + '）' : '') + '</button>';
-      guideEl.querySelector('#guideOpen').addEventListener('click', () => { guideMin = false; renderGuide(); });
+      guideEl.querySelector('#guideOpen').addEventListener('click', () => { if (guideDragMoved) return; guideMin = false; renderGuide(); });
     } else {
       let now = '';
       if (done && total) {
@@ -1091,7 +1095,7 @@
       }
       guideEl.className = 'guide' + (done && total ? ' is-clear' : '');
       guideEl.innerHTML =
-        '<div class="guide-head"><span class="guide-badge">🧭 ガイド</span><span class="guide-chips">' + chips + '</span>' +
+        '<div class="guide-head" title="ここをつかんでドラッグすると移動できます"><span class="guide-grip">⠿</span><span class="guide-badge">🧭 ガイド</span><span class="guide-chips">' + chips + '</span>' +
           '<button class="guide-x" id="guideHide" title="小さくする">－</button></div>' +
         '<div class="guide-title">' + stage.title + '</div>' +
         '<div class="guide-intro">' + g.intro +
@@ -1109,7 +1113,52 @@
     }
     const st = !done && total ? g.steps[Math.min(cur, total - 1)] : null;
     setGuideHighlight(st ? guideTarget(st.hl) : null);
+    applyGuidePos();
   }
+
+  // ガイドは見出し部分（小さくしたときはボタン全体）をつかんで動かせる。
+  // 後ろの文字やブロックを読みたいときに、じゃまにならない場所へ寄せられるように。
+  let guidePos = null, guideDrag = null, guideDragMoved = false;
+  function applyGuidePos(){
+    if (!guidePos) { guideEl.style.left = ''; guideEl.style.top = ''; return; }
+    const maxX = Math.max(0, program.clientWidth - Math.min(guideEl.offsetWidth, program.clientWidth) - 4);
+    const maxY = Math.max(0, program.clientHeight - Math.min(guideEl.offsetHeight, program.clientHeight) - 4);
+    guidePos.x = Math.max(4, Math.min(maxX, guidePos.x));
+    guidePos.y = Math.max(4, Math.min(maxY, guidePos.y));
+    guideEl.style.left = guidePos.x + 'px';
+    guideEl.style.top = guidePos.y + 'px';
+  }
+  guideEl.addEventListener('pointerdown', e => {
+    const handle = e.target.closest('.guide-head, .guide-open');
+    if (!handle) return;
+    if (e.target.closest('button') && !e.target.closest('.guide-open')) return;   // 見出しのボタンはそのまま押せる
+    e.preventDefault();
+    guideDrag = { sx: e.clientX, sy: e.clientY, x0: guideEl.offsetLeft, y0: guideEl.offsetTop, id: e.pointerId };
+    guideDragMoved = false;
+    // 速く動かしてもガイドから外れないよう、移動はウィンドウ全体で追う
+    window.addEventListener('pointermove', onGuideMove);
+    window.addEventListener('pointerup', endGuideDrag);
+    window.addEventListener('pointercancel', endGuideDrag);
+  });
+  function onGuideMove(e){
+    if (!guideDrag || e.pointerId !== guideDrag.id) return;
+    const dx = e.clientX - guideDrag.sx, dy = e.clientY - guideDrag.sy;
+    if (!guideDragMoved && Math.hypot(dx, dy) < 4) return;
+    if (!guideDragMoved) { guideDragMoved = true; guideEl.classList.add('dragging'); hideTooltip(); }
+    guidePos = { x: guideDrag.x0 + dx, y: guideDrag.y0 + dy };
+    applyGuidePos();
+  }
+  function endGuideDrag(e){
+    if (!guideDrag || e.pointerId !== guideDrag.id) return;
+    guideDrag = null;
+    guideEl.classList.remove('dragging');
+    window.removeEventListener('pointermove', onGuideMove);
+    window.removeEventListener('pointerup', endGuideDrag);
+    window.removeEventListener('pointercancel', endGuideDrag);
+    // ドラッグ直後の click（小さくしたガイドが開いてしまう）を無視するため、少しだけ覚えておく
+    setTimeout(() => { guideDragMoved = false; }, 0);
+  }
+  window.addEventListener('resize', () => { if (guidePos) applyGuidePos(); });
 
   function gotoStage(i){
     quePage = i;
@@ -1613,7 +1662,7 @@
     host.innerHTML =
       '<div class="md-wrap">' +
         '<div class="md-desc">組んだ回路をDNAの二重らせんとして並べ、<b>転写</b>（DNA→mRNA）と<b>翻訳</b>（mRNA→タンパク質）を分子1つ1つの動きで見せます。' +
-          '小さな分子や鎖のゆらぎはブラウン運動（ランジュバン方程式）で計算し、RNAポリメラーゼがプロモーターに結合できる確率は上のシミュレーションの転写速度から決めています。' +
+          '小さな分子や鎖のゆらぎはブラウン運動（ランジュバン方程式）で計算し、RNAポリメラーゼがプロモーターに結合できる確率は、「実行」で計算した転写速度から決めています。' +
           '分子の形は簡略化したものです。</div>' +
         (lastResults.length > 1
           ? '<div class="p3d-protein-select" id="txSelect">' + lastResults.map((x, i) =>
@@ -1640,9 +1689,39 @@
     if (!ok) host.innerHTML += '<div class="empty-note">⚠️ 3D描画ライブラリ(Three.js)を読み込めませんでした。</div>';
   }
 
+  // ---------- 分子の動き（MDシミュレーション）のポップアップ ----------
+  // Lab には学術的な情報を置き、見て楽しむ分子アニメーションは別ウィンドウで開きます。
+  const mdPop = document.getElementById('mdPop');
+  const mdPopBody = document.getElementById('mdPopBody');
+  const previewMD = document.getElementById('previewMD');
+  let mdPopOpen = false;
+
+  function openMDPop(){
+    mdPopOpen = true;
+    mdPop.hidden = false;
+    document.body.style.overflow = 'hidden';
+    renderMD();
+  }
+  function closeMDPop(){
+    if (!mdPopOpen) return;
+    mdPopOpen = false;
+    stopAllMD();
+    if (document.fullscreenElement) document.exitFullscreen();
+    mdPop.hidden = true;
+    mdPopBody.innerHTML = '';
+    document.body.style.overflow = '';
+  }
+  document.getElementById('openMD').addEventListener('click', openMDPop);
+  previewMD.addEventListener('click', openMDPop);
+  document.getElementById('mdPopClose').addEventListener('click', closeMDPop);
+  mdPop.addEventListener('pointerdown', e => { if (e.target === mdPop) closeMDPop(); });
+  window.addEventListener('keydown', e => { if (e.key === 'Escape' && mdPopOpen && !document.fullscreenElement) closeMDPop(); });
+
   function renderMD(){
+    const tabContent = mdPopBody;
     if (lastResults.length === 0) {
-      tabContent.innerHTML = '<div class="empty-note">まだ回路がありません。回路を組んで「実行」を押すと、分子シミュレーションを表示します。</div>';
+      stopAllMD();
+      tabContent.innerHTML = '<div class="empty-note md-pop-empty">まだ回路がありません。<br>遺伝子回路を組んで「▶ 実行」を押すと、その回路の中で分子がどう動くかをここで見られます。</div>';
       return;
     }
     const modes = [
@@ -1673,7 +1752,7 @@
     const hasGene = kind => lastResults.some(r => r.genes.some(g => g.part.kind === kind));
     host.innerHTML =
       '<div class="md-wrap">' +
-        '<div class="md-desc">プロモーターに結合したRNAポリメラーゼがmRNAを、mRNAに結合したリボソームがタンパク質を確率的に生成します（過減衰ランジュバン方程式によるブラウン動力学）。上のODEシミュレーションと同じ速度定数(k_tx・k_tl・分解速度)を使い、リプレッサー/アクチベータータンパク質の実際の粒子数に応じて転写確率がその場で変化します。</div>' +
+        '<div class="md-desc">プロモーターに結合したRNAポリメラーゼがmRNAを、mRNAに結合したリボソームがタンパク質を確率的に生成します（過減衰ランジュバン方程式によるブラウン動力学）。「実行」で使ったODEシミュレーションと同じ速度定数(k_tx・k_tl・分解速度)を使い、リプレッサー/アクチベータータンパク質の実際の粒子数に応じて転写確率がその場で変化します。</div>' +
         '<div class="md-canvas-shell">' +
           '<canvas id="mdCanvas" width="' + MD_W + '" height="' + MD_H + '"></canvas>' +
           '<div class="md-dead-overlay" id="mdDeadOverlay">💀 細胞死<small>キルスイッチ遺伝子が発現しました</small></div>' +
@@ -1704,14 +1783,12 @@
     if (activeTab === 'tutorial') renderTutorial();
     else if (activeTab === 'protein') renderProtein();
     else if (activeTab === 'rna') renderRna();
-    else if (activeTab === 'md') renderMD();
     else if (activeTab === 'questions') renderQuestions();
     else if (activeTab === 'load') renderLoad();
   }
 
   tabsBar.querySelectorAll('.tab-item').forEach(el => {
     el.addEventListener('click', () => {
-      if (activeTab === 'md' && el.dataset.tab !== 'md') stopAllMD();
       tabsBar.querySelectorAll('.tab-item').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
       activeTab = el.dataset.tab;
