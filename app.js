@@ -850,12 +850,15 @@
     {
       title: '参考: Optopass Mini',
       story: 'iGEM UTokyo 2022 のプロジェクト「Optopass」を模した回路です。「読み込み」タブから読み込めます。',
-      advancedstory: 'advancedstory',
+      advancedstory: 'iGEM UTokyo 2022 のプロジェクト「Optopass」を模した参考回路です。このコピー版では、常時発現プロモーター・蛍光タンパク質遺伝子・ターミネーターからなる簡易回路に置き換えています。\n' +
+             '「読み込み」タブから配置して実行し、蛍光タンパク質の発現量の推移を確認してください。',
       goal: '自由に回路を構成し、挙動を確認してください。',
       judge(){ return { state:'todo', msg:'自由課題です。' }; }
     }
   ];
   let quePage = 0;
+  // Advanced のときは学術寄りの文面。用意されていないステージは通常の文面を使う
+  function storyOf(stage){ return (advanced && stage.advancedstory) || stage.story; }
 
   // Records evidence from each run for the multi-run stages.
   function recordStageEvidence(ctx){
@@ -1100,7 +1103,7 @@
         '<div class="guide-title">' + stage.title + '</div>' +
         '<div class="guide-intro">' + g.intro +
           ' <button class="guide-link" id="guideStoryBtn">' + (guideStory ? 'ストーリーを閉じる' : 'ストーリーを読む') + '</button></div>' +
-        (guideStory ? '<div class="guide-story">' + (advanced ? stage.advancedstory : stage.story).replace(/\n/g, '<br>') + '</div>' : '') +
+        (guideStory ? '<div class="guide-story">' + storyOf(stage).replace(/\n/g, '<br>') + '</div>' : '') +
         guideStepsHtml(si) + now +
         (g.example && !done ? '<div class="guide-actions"><button id="guideExample" title="いまの回路を消して、このステップのお手本を置きます">🧩 わからないときは お手本を置く</button></div>' : '');
       guideEl.querySelector('#guideHide').addEventListener('click', () => { guideMin = true; renderGuide(); });
@@ -1303,7 +1306,7 @@
 
   function renderQuestions(){
     const stage = STAGES[quePage];
-    const story = advanced ? stage.advancedstory : stage.story;
+    const story = storyOf(stage);
     const verdict = lastCtx ? stage.judge(lastCtx) : { state:'todo', msg:'回路を組んで「実行」を押すと、ここに判定が出ます。' };
     if (verdict.state === 'pass') cleared[quePage] = true;
 
