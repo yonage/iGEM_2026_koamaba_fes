@@ -26,25 +26,25 @@
   // decayP = protein degradation rate (LOW decayP = stable/long-lived protein).
   // These two form the trade-off the player explores in stage 2.
   const PARTS = [
-    { id:'promConst1',      shape:'promoter',  cat:'promoter', kind:'prom-const',     label:'常に発現',              short:'常時発現',   desc:'常に一定の割合で下流を転写します。' },
-    { id:'promRepressor',   shape:'promoter',  cat:'promoter', kind:'prom-repressor', label:'リプレッサー抑制',       short:'抑制プロモーター', desc:'活性化されたリプレッサーが結合すると下流の転写が抑制されます。' },
-    { id:'promActivator',   shape:'promoter',  cat:'promoter', kind:'prom-activator', label:'アクチベーター促進',     short:'促進プロモーター', desc:'活性化されたアクチベーターが結合すると下流の転写が促進されます。' },
-    { id:'promSignalOff',   shape:'promoter',  cat:'promoter', kind:'prom-signal-off',label:'シグナル分子で抑制',     short:'シグナル抑制', desc:'シグナル分子（Labで調整）の存在下では下流の転写が抑制され、非存在下では転写されます。キルスイッチと組み合わせるバイオコンテインメント回路に用います。' },
-    { id:'promSignalOn',    shape:'promoter',  cat:'promoter', kind:'prom-signal-on', label:'シグナル分子で発現',     short:'シグナル発現', desc:'シグナル分子（Labで調整）が存在するときのみ下流が転写されます。' },
-    { id:'visiFluorescence',shape:'visible',   cat:'gene',     kind:'gene-visible',   label:'蛍光タンパク質遺伝子',   short:'GFP',        desc:'蛍光を発するタンパク質です。' },
-    { id:'DegradingEnzyme', shape:'visible',   cat:'gene',     kind:'gene-degrader',  label:'重油分解酵素遺伝子（標準）', short:'分解酵素', desc:'重油の主成分である長鎖アルカンを分解する酵素です。触媒速度・安定性ともに標準的なバリアント。',
+    { id:'promConst1',      shape:'promoter',  cat:'promoter', kind:'prom-const',     label:'常に発現',              short:'常時発現',   desc:'常に一定の割合で下流を転写します。', easy:'いつもONのスイッチです。うしろにつないだ遺伝子をずっと読み続けます。' },
+    { id:'promRepressor',   shape:'promoter',  cat:'promoter', kind:'prom-repressor', label:'リプレッサー抑制',       short:'抑制プロモーター', desc:'活性化されたリプレッサーが結合すると下流の転写が抑制されます。', easy:'リプレッサー（「抑制遺伝子」から作られるタンパク質）がくっつくとOFFになるスイッチです。' },
+    { id:'promActivator',   shape:'promoter',  cat:'promoter', kind:'prom-activator', label:'アクチベーター促進',     short:'促進プロモーター', desc:'活性化されたアクチベーターが結合すると下流の転写が促進されます。', easy:'アクチベーター（「促進遺伝子」から作られるタンパク質）がくっつくとONになるスイッチです。' },
+    { id:'promSignalOff',   shape:'promoter',  cat:'promoter', kind:'prom-signal-off',label:'シグナル分子で抑制',     short:'シグナル抑制', desc:'シグナル分子（Labで調整）の存在下では下流の転写が抑制され、非存在下では転写されます。キルスイッチと組み合わせるバイオコンテインメント回路に用います。', easy:'シグナル分子があるとOFF、ないとONになるスイッチです。シグナル分子の濃さはLabで変えられます。' },
+    { id:'promSignalOn',    shape:'promoter',  cat:'promoter', kind:'prom-signal-on', label:'シグナル分子で発現',     short:'シグナル発現', desc:'シグナル分子（Labで調整）が存在するときのみ下流が転写されます。', easy:'シグナル分子があるときだけONになるスイッチです。シグナル分子の濃さはLabで変えられます。' },
+    { id:'visiFluorescence',shape:'visible',   cat:'gene',     kind:'gene-visible',   label:'蛍光タンパク質遺伝子',   short:'GFP',        desc:'蛍光を発するタンパク質です。', easy:'光るタンパク質（GFP）の設計図です。作られるとGenomyが緑色に光ります。' },
+    { id:'DegradingEnzyme', shape:'visible',   cat:'gene',     kind:'gene-degrader',  label:'重油分解酵素遺伝子（標準）', short:'分解酵素', desc:'重油の主成分である長鎖アルカンを分解する酵素です。触媒速度・安定性ともに標準的なバリアント。', easy:'重油を分解する酵素の設計図です。分解の速さも長持ちのしやすさもふつう。',
       kcat:4.0, decayP:0.30 },
-    { id:'enzFast',         shape:'visible',   cat:'gene',     kind:'gene-degrader',  label:'高速分解酵素遺伝子',     short:'高速酵素',   desc:'触媒速度（kcat）が高いバリアントです。ただしタンパク質としての安定性が低く、細胞内にほとんど蓄積しません。',
+    { id:'enzFast',         shape:'visible',   cat:'gene',     kind:'gene-degrader',  label:'高速分解酵素遺伝子',     short:'高速酵素',   desc:'触媒速度（kcat）が高いバリアントです。ただしタンパク質としての安定性が低く、細胞内にほとんど蓄積しません。', easy:'重油の分解はとても速いけれど、すぐに壊れてしまう酵素の設計図です。',
       kcat:9.0, decayP:1.00 },
-    { id:'enzStable',       shape:'visible',   cat:'gene',     kind:'gene-degrader',  label:'安定分解酵素遺伝子',     short:'安定酵素',   desc:'触媒速度は低いものの、細胞内プロテアーゼによる分解を受けにくいバリアントです。時間とともに高濃度まで蓄積します。',
+    { id:'enzStable',       shape:'visible',   cat:'gene',     kind:'gene-degrader',  label:'安定分解酵素遺伝子',     short:'安定酵素',   desc:'触媒速度は低いものの、細胞内プロテアーゼによる分解を受けにくいバリアントです。時間とともに高濃度まで蓄積します。', easy:'分解はゆっくりだけど壊れにくく、だんだん細胞の中にたまっていく酵素の設計図です。',
       kcat:1.5, decayP:0.10 },
-    { id:'seqLinker',       shape:'meta',      cat:'seq',      kind:'seq-linker',     label:'リンカー配列',           short:'リンカー',    desc:'2つの酵素遺伝子の<b>間</b>に挿入すると、両者がin-frameで連結された1本の融合タンパク質として翻訳されます。触媒ドメインと安定化ドメインを組み合わせる際に用います。' },
-    { id:'ctrlRepressor',   shape:'control',   cat:'gene',     kind:'gene-repressor', label:'リプレッサー遺伝子',     short:'抑制遺伝子',  desc:'プロモーターの転写を抑制します。' },
-    { id:'ctrlActivator',   shape:'control',   cat:'gene',     kind:'gene-activator', label:'アクチベーター遺伝子',   short:'促進遺伝子',  desc:'プロモーターの転写を促進します。' },
-    { id:'term1',           shape:'terminator',cat:'terminator',kind:'terminator',    label:'ターミネーター',         short:'ターミネーター', desc:'転写を終了します。これ以降のブロックは転写されません。' },
-    { id:'metaRecomb',      shape:'meta',      cat:'gene',     kind:'gene-recomb',    label:'リコンビナーゼ遺伝子',   short:'リコンビナーゼ', desc:'対応する認識配列に挟まれた配列を切り出します。' },
-    { id:'seqRecogRecomb',  shape:'seqrecomb', cat:'seq',      kind:'seq-recomb',     label:'認識配列',               short:'',            desc:'リコンビナーゼに認識される配列です。' },
-    { id:'metaKill',        shape:'meta',      cat:'gene',     kind:'gene-kill',      label:'キルスイッチ遺伝子',     short:'キルスイッチ', desc:'標的生物を死滅させます。' }
+    { id:'seqLinker',       shape:'meta',      cat:'seq',      kind:'seq-linker',     label:'リンカー配列',           short:'リンカー',    desc:'2つの酵素遺伝子の<b>間</b>に挿入すると、両者がin-frameで連結された1本の融合タンパク質として翻訳されます。触媒ドメインと安定化ドメインを組み合わせる際に用います。', easy:'2つの遺伝子の間にはさむと、2つが1本のタンパク質としてつながります。' },
+    { id:'ctrlRepressor',   shape:'control',   cat:'gene',     kind:'gene-repressor', label:'リプレッサー遺伝子',     short:'抑制遺伝子',  desc:'プロモーターの転写を抑制します。', easy:'スイッチをOFFにするタンパク質（リプレッサー）の設計図です。「抑制プロモーター」に効きます。' },
+    { id:'ctrlActivator',   shape:'control',   cat:'gene',     kind:'gene-activator', label:'アクチベーター遺伝子',   short:'促進遺伝子',  desc:'プロモーターの転写を促進します。', easy:'スイッチをONにするタンパク質（アクチベーター）の設計図です。「促進プロモーター」に効きます。' },
+    { id:'term1',           shape:'terminator',cat:'terminator',kind:'terminator',    label:'ターミネーター',         short:'ターミネーター', desc:'転写を終了します。これ以降のブロックは転写されません。', easy:'「読むのはここまで」の目印です。遺伝子のうしろにつなぎます。' },
+    { id:'metaRecomb',      shape:'meta',      cat:'gene',     kind:'gene-recomb',    label:'リコンビナーゼ遺伝子',   short:'リコンビナーゼ', desc:'対応する認識配列に挟まれた配列を切り出します。', easy:'2つの「認識配列」にはさまれた部分を切り取るタンパク質の設計図です。' },
+    { id:'seqRecogRecomb',  shape:'seqrecomb', cat:'seq',      kind:'seq-recomb',     label:'認識配列',               short:'',            desc:'リコンビナーゼに認識される配列です。', easy:'リコンビナーゼが見つけて切り取るための目印です。2つで1組として使います。' },
+    { id:'metaKill',        shape:'meta',      cat:'gene',     kind:'gene-kill',      label:'キルスイッチ遺伝子',     short:'キルスイッチ', desc:'標的生物を死滅させます。', easy:'作られると菌が死んでしまうタンパク質の設計図です。' }
   ];
   const PART_BY_ID = Object.fromEntries(PARTS.map(p => [p.id, p]));
 
@@ -77,6 +77,7 @@
   const previewChips = document.getElementById('previewChips');
   const previewChartWrap = document.getElementById('previewChartWrap');
   const oilPanel = document.getElementById('oilPanel');
+  const previewDetails = document.getElementById('previewDetails');
   const drugA = document.getElementById('drugA');
   const drugAVal = document.getElementById('drugAVal');
   const blueLightSwitch = document.getElementById('blueLightSwitch');
@@ -90,12 +91,8 @@
   let advanced = false;
   // ガイド（下の方で定義）が使えるようになったら true。初期化中の呼び出しを無視するため
   let guideReady = false;
-  const mdTab = tabsBar.querySelector('[data-tab="md"]');
-  if (mdTab) mdTab.hidden = true;
-
   advancedBtn.addEventListener('click', () => {
     advanced =! advanced;
-    if (mdTab) mdTab.hidden = !advanced;
     if (activeTab === 'questions') renderQuestions();
     if (guideReady) renderGuide();
   });
@@ -104,7 +101,11 @@
   toggleRight.addEventListener('click', () => {
     const show = rightPanel.classList.toggle('show');
     toggleRight.textContent = show ? 'Lab を隠す' : 'Lab を表示';
-    if (guideReady) renderGuide();
+    if (guideReady) {
+      renderGuide();
+      // パネルの開閉アニメーションのあと、ガイドがはみ出していれば戻す
+      setTimeout(renderGuide, 260);
+    }
   });
 
   // ---------- Environment controls ----------
@@ -134,8 +135,9 @@
   });
 
   // ---------- Tooltip ----------
+  // 通常はやさしい説明、Advanced のときは学術寄りの説明を出す
   function showTooltip(el, part){
-    tooltip.innerHTML = '<h3>' + part.label + '</h3>' + part.desc;
+    tooltip.innerHTML = '<h3>' + part.label + '</h3>' + (advanced || !part.easy ? part.desc : part.easy);
     tooltip.hidden = false;
     const r = el.getBoundingClientRect();
     let left = r.left, top = r.bottom + 8;
@@ -151,6 +153,7 @@
     const shape = SHAPES[part.shape];
     const wrap = document.createElement('div');
     wrap.className = 'tray-item-wrap';
+    wrap.dataset.partId = part.id;
     const blk = document.createElement('div');
     blk.className = 'blk';
     blk.dataset.partId = part.id;
@@ -598,6 +601,8 @@
       renderPreview(lastResults);
       initMDParticles(lastResults);
       refreshActiveTab();
+      if (mdPopOpen) renderMD();
+      previewMD.hidden = !lastResults.length;
       renderGuide();
       runStatus.textContent = lastResults.length ? '実行完了（' + lastResults.length + '回路）' : '回路が組まれていません';
     }, 650);
@@ -613,7 +618,9 @@
     renderPreview(lastResults);
     setBacteriumVisual(bacteriumImg, 0, 0);
     runStatus.style.display = 'none';
+    previewMD.hidden = true;
     refreshActiveTab();
+    if (mdPopOpen) renderMD();
   }
   document.getElementById('clearBtn').addEventListener('click', clearProgram);
 
@@ -700,6 +707,7 @@
     const hasGFP = items.some(it => it.part.kind === 'gene-visible');
     const hasRecombinase = items.some(it => it.part.kind === 'gene-recomb');
     setBacteriumVisual(previewBacterium, totalKill, totalGFP);
+    previewDetails.hidden = results.length === 0;
 
     if (results.length === 0) {
       previewStatus.className = 'preview-status';
@@ -757,7 +765,7 @@
 "トレイから取ったブロックを結合することによって、好きなように遺伝子回路を構築してみましょう！\n標準的な遺伝子はプロモーター、タンパク質コーディング領域、ターミネーターがこの順に並んだ形になります。試しに、「常に発現」プロモーターと「蛍光タンパク質遺伝子」「ターミネーター」をこの順で繋げてみましょう。\n回路構築が終わったら、右下の「実行」ボタンを押しましょう。実験開始です。シミュレーションが始まります。",
 "Labでは、3パラメーター: 薬剤Aの量と赤色光、青色光それぞれの照射の有無を調整することができます。\nここで組んだ基本的な回路は薬剤や光には依存しないためここでの調整は変化をもたらしませんが、もっと複雑な回路になってくると効いてくる要素です。",
 "実行ボタンを押し、環境調整も終わったら次は実験結果の観察と評価です。\nLabにあるGenomyのイラストを見ると蛍光タンパク質の発現量と種類を大まかに目で確認することができます。\n前述したとおり、ProteinタブとRNAタブでは生産中の物質の情報について知ることができ、特に蛍光タンパク質については発現量も見ることができます。",
-"それでは、プログラム画面の左上にある「🧭 ガイド」に従って、ステージ1から挑戦してみましょう！\nガイドはやることを1ステップずつ案内し、できたら自動でチェックが付きます。光っているブロックやボタンが、次に使うものです。\n困ったときは「お手本を置く」ボタンも使えます。ステージの詳しい説明は「ステージ」タブでも読めます。"
+"それでは、プログラム画面の左上にある「ガイド」に従って、ステージ1から挑戦してみましょう！\nガイドはやることを1ステップずつ案内し、できたら自動でチェックが付きます。光っているブロックやボタンが、次に使うものです。\n困ったときは「お手本を置く」ボタンも使えます。ステージの詳しい説明は「ステージ」タブでも読めます。"
   ];
   let tutPage = 0;
 
@@ -846,12 +854,15 @@
     {
       title: '参考: Optopass Mini',
       story: 'iGEM UTokyo 2022 のプロジェクト「Optopass」を模した回路です。「読み込み」タブから読み込めます。',
-      advancedstory: 'advancedstory',
+      advancedstory: 'iGEM UTokyo 2022 のプロジェクト「Optopass」を模した参考回路です。このコピー版では、常時発現プロモーター・蛍光タンパク質遺伝子・ターミネーターからなる簡易回路に置き換えています。\n' +
+             '「読み込み」タブから配置して実行し、蛍光タンパク質の発現量の推移を確認してください。',
       goal: '自由に回路を構成し、挙動を確認してください。',
       judge(){ return { state:'todo', msg:'自由課題です。' }; }
     }
   ];
   let quePage = 0;
+  // Advanced のときは学術寄りの文面。用意されていないステージは通常の文面を使う
+  function storyOf(stage){ return (advanced && stage.advancedstory) || stage.story; }
 
   // Records evidence from each run for the multi-run stages.
   function recordStageEvidence(ctx){
@@ -974,7 +985,7 @@
           check: () => startsWith(['promConst1', 'enzFast', 'seqLinker', 'enzStable', 'term1']) },
         { short: '実行して85%以上でクリア', hl: { el: 'run' },
           text: '「<b>▶ 実行</b>」して、重油を<b>85%以上</b>分解できたらクリア！',
-          why: '「Advanced」をONにすると、MDシミュレーションで融合タンパク質が折りたたまれる様子も見られます。',
+          why: '実行したあと上の「🎬 分子の動きを見る」を押すと、融合タンパク質が作られて折りたたまれる様子が見られます。',
           check: () => false }
       ],
       example: () => ['promConst1', 'enzFast', 'seqLinker', 'enzStable', 'term1'],
@@ -1061,46 +1072,82 @@
     if (tray.contains(el)) el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   }
 
+  // 目標の回路のうち、いま左からいくつ正しく並んでいるか
+  function matchedPrefix(ids){
+    let best = 0;
+    chainIds().forEach(ch => { let n = 0; while (n < ids.length && ch[n] === ids[n]) n++; best = Math.max(best, n); });
+    return best;
+  }
+
+  // 目標の回路を、ブロックの色と形をまねた小さな図で示す。
+  // 並べ終わったものは濃く、次につなぐものは光らせ、まだのものは薄く。
+  function guideFigureHtml(ids, allDone){
+    const k = allDone ? ids.length : matchedPrefix(ids);
+    return '<div class="gfig">' + ids.map((id, i) => {
+      const part = PART_BY_ID[id];
+      const cls = i < k ? 'ok' : (i === k ? 'next' : 'todo');
+      return '<div class="gfig-item ' + cls + '">' +
+        (i === k ? '<span class="gfig-arrow">次はこれ</span>' : '') +
+        '<span class="gfig-blk gfig-' + part.shape + '">' + part.short + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  let guideWhy = false;
+
   function renderGuide(){
     if (!guideReady) return;
     const si = quePage, g = GUIDE[si], stage = STAGES[si];
     const cur = guideStepIndex(si), done = cleared[si], total = g.steps.length;
+    const stageName = stage.title.split(':')[0];
     const chips = STAGES.map((s, i) =>
       '<button class="guide-chip ' + (i === si ? 'current ' : '') + (cleared[i] ? 'cleared' : '') + '" data-i="' + i + '" title="' + s.title + '">' +
         (cleared[i] ? '✓' : (i < 4 ? i + 1 : '★')) + '</button>').join('');
 
     if (guideMin) {
       guideEl.className = 'guide min';
-      guideEl.innerHTML = '<button class="guide-open" id="guideOpen">🧭 ガイド ・ ' + stage.title.split(':')[0] +
+      guideEl.innerHTML = '<button class="guide-open" id="guideOpen">ガイド ・ ' + stageName +
         (total ? '（' + (done ? 'クリア' : Math.min(cur + 1, total) + '/' + total) + '）' : '') + '</button>';
-      guideEl.querySelector('#guideOpen').addEventListener('click', () => { guideMin = false; renderGuide(); });
+      guideEl.querySelector('#guideOpen').addEventListener('click', () => { if (guideDragMoved) return; guideMin = false; renderGuide(); });
     } else {
-      let now = '';
+      const target = g.example ? g.example() : null;
+      let body = '';
       if (done && total) {
-        now = '<div class="guide-now clear"><div class="guide-clear-title">🎉 ' + stage.title.split(':')[0] + ' クリア！</div>' +
-          '<div class="guide-learned"><b>わかったこと</b><br>' + g.learned + '</div>' +
-          (si < 3 ? '<button class="guide-next" id="guideNext">次のステージへ ▶</button>' : '<div class="guide-learned">全ステージクリア、おめでとう！ 自由に回路を作ってみよう。</div>') +
+        body = '<div class="guide-now clear"><div class="guide-clear-title">' + stageName + ' クリア</div>' +
+          (target ? guideFigureHtml(target, true) : '') +
+          '<div class="guide-learned"><b>ポイント</b>　' + g.learned + '</div>' +
+          (si < 3 ? '<button class="guide-next" id="guideNext">次のステージへ</button>' : '<div class="guide-learned">これで全ステージクリアです。あとは自由に回路を作ってみてください。</div>') +
         '</div>';
       } else if (total) {
         const st = g.steps[Math.min(cur, total - 1)];
         const warn = st.warn && st.warn();
-        now = '<div class="guide-now"><div class="guide-now-label">ステップ ' + (cur + 1) + ' / ' + total + '</div>' +
-          '<div class="guide-text">👉 ' + st.text + '</div>' +
-          (warn ? '<div class="guide-warn">⚠️ ' + warn + '</div>' : '') +
-          '<div class="guide-why">💡 ' + st.why + '</div></div>';
+        const dots = g.steps.map((_, i) => '<i class="' + (i < cur ? 'on' : i === cur ? 'now' : '') + '"></i>').join('');
+        body =
+          '<div class="guide-progress">' + dots + '<span>ステップ ' + (cur + 1) + ' / ' + total + '</span></div>' +
+          '<div class="guide-text">' + st.text + '</div>' +
+          (target ? guideFigureHtml(target, false) : '') +
+          (warn ? '<div class="guide-warn">' + warn + '</div>' : '') +
+          '<button class="guide-link guide-why-btn" id="guideWhyBtn">' + (guideWhy ? 'なぜ？を閉じる' : 'なぜ？') + '</button>' +
+          (guideWhy ? '<div class="guide-why">' + st.why + '</div>' : '');
+      } else {
+        body = '<div class="guide-text">' + g.intro + '</div>';
       }
       guideEl.className = 'guide' + (done && total ? ' is-clear' : '');
       guideEl.innerHTML =
-        '<div class="guide-head"><span class="guide-badge">🧭 ガイド</span><span class="guide-chips">' + chips + '</span>' +
+        '<div class="guide-head" title="ここをつかんでドラッグすると移動できます"><span class="guide-grip">⠿</span><span class="guide-badge">ガイド</span><span class="guide-chips">' + chips + '</span>' +
           '<button class="guide-x" id="guideHide" title="小さくする">－</button></div>' +
         '<div class="guide-title">' + stage.title + '</div>' +
-        '<div class="guide-intro">' + g.intro +
-          ' <button class="guide-link" id="guideStoryBtn">' + (guideStory ? 'ストーリーを閉じる' : 'ストーリーを読む') + '</button></div>' +
-        (guideStory ? '<div class="guide-story">' + (advanced ? stage.advancedstory : stage.story).replace(/\n/g, '<br>') + '</div>' : '') +
-        guideStepsHtml(si) + now +
-        (g.example && !done ? '<div class="guide-actions"><button id="guideExample" title="いまの回路を消して、このステップのお手本を置きます">🧩 わからないときは お手本を置く</button></div>' : '');
+        // 導入の一文はステージの最初だけ。あとは「今やること」に集中できるように隠す
+        (total && cur === 0 && !done ? '<div class="guide-intro">' + g.intro + '</div>' : '') +
+        body +
+        (guideStory ? '<div class="guide-story">' + storyOf(stage).replace(/\n/g, '<br>') + '</div>' : '') +
+        '<div class="guide-foot">' +
+          '<button class="guide-link" id="guideStoryBtn">' + (guideStory ? 'ストーリーを閉じる' : 'ストーリーを読む') + '</button>' +
+          (g.example && !done ? '<button class="guide-link" id="guideExample" title="いまの回路を消して、このステップのお手本を置きます">お手本を置く</button>' : '') +
+        '</div>';
       guideEl.querySelector('#guideHide').addEventListener('click', () => { guideMin = true; renderGuide(); });
       guideEl.querySelector('#guideStoryBtn').addEventListener('click', () => { guideStory = !guideStory; renderGuide(); });
+      const why = guideEl.querySelector('#guideWhyBtn');
+      if (why) why.addEventListener('click', () => { guideWhy = !guideWhy; renderGuide(); });
       const nx = guideEl.querySelector('#guideNext');
       if (nx) nx.addEventListener('click', () => gotoStage(si + 1));
       const ex = guideEl.querySelector('#guideExample');
@@ -1109,7 +1156,53 @@
     }
     const st = !done && total ? g.steps[Math.min(cur, total - 1)] : null;
     setGuideHighlight(st ? guideTarget(st.hl) : null);
+    renderTrayFilter();
+    applyGuidePos();
   }
+
+  // ガイドは見出し部分（小さくしたときはボタン全体）をつかんで動かせる。
+  // 後ろの文字やブロックを読みたいときに、じゃまにならない場所へ寄せられるように。
+  let guidePos = null, guideDrag = null, guideDragMoved = false;
+  function applyGuidePos(){
+    if (!guidePos) { guideEl.style.left = ''; guideEl.style.top = ''; return; }
+    const maxX = Math.max(0, program.clientWidth - Math.min(guideEl.offsetWidth, program.clientWidth) - 4);
+    const maxY = Math.max(0, program.clientHeight - Math.min(guideEl.offsetHeight, program.clientHeight) - 4);
+    guidePos.x = Math.max(4, Math.min(maxX, guidePos.x));
+    guidePos.y = Math.max(4, Math.min(maxY, guidePos.y));
+    guideEl.style.left = guidePos.x + 'px';
+    guideEl.style.top = guidePos.y + 'px';
+  }
+  guideEl.addEventListener('pointerdown', e => {
+    const handle = e.target.closest('.guide-head, .guide-open');
+    if (!handle) return;
+    if (e.target.closest('button') && !e.target.closest('.guide-open')) return;   // 見出しのボタンはそのまま押せる
+    e.preventDefault();
+    guideDrag = { sx: e.clientX, sy: e.clientY, x0: guideEl.offsetLeft, y0: guideEl.offsetTop, id: e.pointerId };
+    guideDragMoved = false;
+    // 速く動かしてもガイドから外れないよう、移動はウィンドウ全体で追う
+    window.addEventListener('pointermove', onGuideMove);
+    window.addEventListener('pointerup', endGuideDrag);
+    window.addEventListener('pointercancel', endGuideDrag);
+  });
+  function onGuideMove(e){
+    if (!guideDrag || e.pointerId !== guideDrag.id) return;
+    const dx = e.clientX - guideDrag.sx, dy = e.clientY - guideDrag.sy;
+    if (!guideDragMoved && Math.hypot(dx, dy) < 4) return;
+    if (!guideDragMoved) { guideDragMoved = true; guideEl.classList.add('dragging'); hideTooltip(); }
+    guidePos = { x: guideDrag.x0 + dx, y: guideDrag.y0 + dy };
+    applyGuidePos();
+  }
+  function endGuideDrag(e){
+    if (!guideDrag || e.pointerId !== guideDrag.id) return;
+    guideDrag = null;
+    guideEl.classList.remove('dragging');
+    window.removeEventListener('pointermove', onGuideMove);
+    window.removeEventListener('pointerup', endGuideDrag);
+    window.removeEventListener('pointercancel', endGuideDrag);
+    // ドラッグ直後の click（小さくしたガイドが開いてしまう）を無視するため、少しだけ覚えておく
+    setTimeout(() => { guideDragMoved = false; }, 0);
+  }
+  window.addEventListener('resize', () => { if (guidePos) applyGuidePos(); });
 
   function gotoStage(i){
     quePage = i;
@@ -1130,6 +1223,31 @@
     updateHint();
   }
 
+  // ---------- トレイの絞り込み ----------
+  // 初めは今のステージで使うブロックだけを並べ、一度に目に入る情報を減らす。
+  // 自由課題のステージと「すべて表示」を選んだときは全部出す。
+  const STAGE_PARTS = [
+    ['promConst1', 'DegradingEnzyme', 'term1'],
+    ['promConst1', 'enzFast', 'enzStable', 'term1'],
+    ['promConst1', 'enzFast', 'seqLinker', 'enzStable', 'term1'],
+    ['promSignalOff', 'metaKill', 'term1'],
+    null
+  ];
+  let trayAll = false;
+  const trayToggle = document.createElement('button');
+  trayToggle.className = 'tray-toggle';
+  trayWrap.appendChild(trayToggle);
+  trayToggle.addEventListener('click', () => { trayAll = !trayAll; renderTrayFilter(); });
+  function renderTrayFilter(){
+    const only = trayAll ? null : STAGE_PARTS[quePage];
+    tray.querySelectorAll('.tray-item-wrap').forEach(w => {
+      w.hidden = !!only && !only.includes(w.dataset.partId);
+    });
+    trayToggle.hidden = !STAGE_PARTS[quePage];
+    trayToggle.textContent = trayAll ? 'このステージのブロックだけ表示' : 'すべてのブロックを表示（' + PARTS.length + '個）';
+    trayWrap.classList.toggle('filtered', !!only);
+  }
+
   function showToast(html){
     let t = document.getElementById('guideToast');
     if (!t) { t = document.createElement('div'); t.id = 'guideToast'; t.className = 'guide-toast'; document.body.appendChild(t); }
@@ -1145,7 +1263,7 @@
       if (cleared[i] || !GUIDE[i].steps.length) return;
       if (stage.judge(ctx).state === 'pass') {
         cleared[i] = true;
-        if (i === quePage) showToast('🎉 ' + stage.title.split(':')[0] + ' クリア！');
+        if (i === quePage) showToast(stage.title.split(':')[0] + ' クリア');
       }
     });
   }
@@ -1254,7 +1372,7 @@
 
   function renderQuestions(){
     const stage = STAGES[quePage];
-    const story = advanced ? stage.advancedstory : stage.story;
+    const story = storyOf(stage);
     const verdict = lastCtx ? stage.judge(lastCtx) : { state:'todo', msg:'回路を組んで「実行」を押すと、ここに判定が出ます。' };
     if (verdict.state === 'pass') cleared[quePage] = true;
 
@@ -1613,7 +1731,7 @@
     host.innerHTML =
       '<div class="md-wrap">' +
         '<div class="md-desc">組んだ回路をDNAの二重らせんとして並べ、<b>転写</b>（DNA→mRNA）と<b>翻訳</b>（mRNA→タンパク質）を分子1つ1つの動きで見せます。' +
-          '小さな分子や鎖のゆらぎはブラウン運動（ランジュバン方程式）で計算し、RNAポリメラーゼがプロモーターに結合できる確率は上のシミュレーションの転写速度から決めています。' +
+          '小さな分子や鎖のゆらぎはブラウン運動（ランジュバン方程式）で計算し、RNAポリメラーゼがプロモーターに結合できる確率は、「実行」で計算した転写速度から決めています。' +
           '分子の形は簡略化したものです。</div>' +
         (lastResults.length > 1
           ? '<div class="p3d-protein-select" id="txSelect">' + lastResults.map((x, i) =>
@@ -1640,15 +1758,45 @@
     if (!ok) host.innerHTML += '<div class="empty-note">⚠️ 3D描画ライブラリ(Three.js)を読み込めませんでした。</div>';
   }
 
+  // ---------- 分子の動き（MDシミュレーション）のポップアップ ----------
+  // Lab には学術的な情報を置き、見て楽しむ分子アニメーションは別ウィンドウで開きます。
+  const mdPop = document.getElementById('mdPop');
+  const mdPopBody = document.getElementById('mdPopBody');
+  const previewMD = document.getElementById('previewMD');
+  let mdPopOpen = false;
+
+  function openMDPop(){
+    mdPopOpen = true;
+    mdPop.hidden = false;
+    document.body.style.overflow = 'hidden';
+    renderMD();
+  }
+  function closeMDPop(){
+    if (!mdPopOpen) return;
+    mdPopOpen = false;
+    stopAllMD();
+    if (document.fullscreenElement) document.exitFullscreen();
+    mdPop.hidden = true;
+    mdPopBody.innerHTML = '';
+    document.body.style.overflow = '';
+  }
+  document.getElementById('openMD').addEventListener('click', openMDPop);
+  previewMD.addEventListener('click', openMDPop);
+  document.getElementById('mdPopClose').addEventListener('click', closeMDPop);
+  mdPop.addEventListener('pointerdown', e => { if (e.target === mdPop) closeMDPop(); });
+  window.addEventListener('keydown', e => { if (e.key === 'Escape' && mdPopOpen && !document.fullscreenElement) closeMDPop(); });
+
   function renderMD(){
+    const tabContent = mdPopBody;
     if (lastResults.length === 0) {
-      tabContent.innerHTML = '<div class="empty-note">まだ回路がありません。回路を組んで「実行」を押すと、分子シミュレーションを表示します。</div>';
+      stopAllMD();
+      tabContent.innerHTML = '<div class="empty-note md-pop-empty">まだ回路がありません。<br>遺伝子回路を組んで「▶ 実行」を押すと、その回路の中で分子がどう動くかをここで見られます。</div>';
       return;
     }
     const modes = [
-      ['tx3d', '🎬 転写と翻訳（3D）'],
-      ['cell', '🧫 細胞内（2D）'],
-      ['protein3d', '🧬 酵素の動き（3D）']
+      ['tx3d', '転写と翻訳（3D）'],
+      ['cell', '細胞内（2D）'],
+      ['protein3d', '酵素の動き（3D）']
     ];
     tabContent.innerHTML =
       '<div class="md-mode-toggle">' + modes.map(m =>
@@ -1673,7 +1821,7 @@
     const hasGene = kind => lastResults.some(r => r.genes.some(g => g.part.kind === kind));
     host.innerHTML =
       '<div class="md-wrap">' +
-        '<div class="md-desc">プロモーターに結合したRNAポリメラーゼがmRNAを、mRNAに結合したリボソームがタンパク質を確率的に生成します（過減衰ランジュバン方程式によるブラウン動力学）。上のODEシミュレーションと同じ速度定数(k_tx・k_tl・分解速度)を使い、リプレッサー/アクチベータータンパク質の実際の粒子数に応じて転写確率がその場で変化します。</div>' +
+        '<div class="md-desc">プロモーターに結合したRNAポリメラーゼがmRNAを、mRNAに結合したリボソームがタンパク質を確率的に生成します（過減衰ランジュバン方程式によるブラウン動力学）。「実行」で使ったODEシミュレーションと同じ速度定数(k_tx・k_tl・分解速度)を使い、リプレッサー/アクチベータータンパク質の実際の粒子数に応じて転写確率がその場で変化します。</div>' +
         '<div class="md-canvas-shell">' +
           '<canvas id="mdCanvas" width="' + MD_W + '" height="' + MD_H + '"></canvas>' +
           '<div class="md-dead-overlay" id="mdDeadOverlay">💀 細胞死<small>キルスイッチ遺伝子が発現しました</small></div>' +
@@ -1704,14 +1852,12 @@
     if (activeTab === 'tutorial') renderTutorial();
     else if (activeTab === 'protein') renderProtein();
     else if (activeTab === 'rna') renderRna();
-    else if (activeTab === 'md') renderMD();
     else if (activeTab === 'questions') renderQuestions();
     else if (activeTab === 'load') renderLoad();
   }
 
   tabsBar.querySelectorAll('.tab-item').forEach(el => {
     el.addEventListener('click', () => {
-      if (activeTab === 'md' && el.dataset.tab !== 'md') stopAllMD();
       tabsBar.querySelectorAll('.tab-item').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
       activeTab = el.dataset.tab;

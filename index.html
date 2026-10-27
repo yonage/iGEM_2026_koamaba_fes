@@ -21,6 +21,7 @@
   <span class="ttl">Genochemy</span>
   <span class="sub">細菌をプログラミングして海の重油汚染を分解しよう</span>
   <a href="https://genochemy.netlify.app" target="_blank" rel="noopener">元アプリ</a>
+  <button class="topbar-btn" id="openMD" title="組んだ回路の転写・翻訳を分子の動きで見るポップアップ">分子の動きを見る</button>
   <button class="topbar-btn" id="openCrowding" title="細胞質を実濃度で再現した全画面シミュレーション">🔬 細胞内を見る</button>
   <a href="https://2022.igem.wiki/utokyo/genochemy/" target="_blank" rel="noopener">iGEM UTokyo 2022</a>
   <button class="advanced-btn" id="advancedBtn" type="button">Advanced</button>
@@ -49,12 +50,16 @@
       <img class="preview-bact" id="previewBacterium" alt="Genomy">
     </div>
     <div class="preview-status" id="previewStatus">回路を組んで「実行」を押すと、ここに結果が表示されます。</div>
-    <h3>海水の重油汚染</h3>
-    <div id="oilPanel"></div>
-    <h3>生産中のタンパク質</h3>
-    <div class="preview-chips" id="previewChips"></div>
-    <h3>発現量の推移</h3>
-    <div id="previewChartWrap"></div>
+    <button class="preview-md-btn" id="previewMD" hidden>この回路の分子の動きを見る</button>
+    <!-- 細かい結果は、実行するまで出さない（最初に目に入る情報を減らすため） -->
+    <div class="preview-details" id="previewDetails" hidden>
+      <h3>海水の重油汚染</h3>
+      <div id="oilPanel"></div>
+      <h3>生産中のタンパク質</h3>
+      <div class="preview-chips" id="previewChips"></div>
+      <h3>発現量の推移</h3>
+      <div id="previewChartWrap"></div>
+    </div>
   </aside>
 
   <div class="lab-strip"><button class="lab-toggle-btn" id="toggleRight">Lab を表示</button></div>
@@ -82,7 +87,6 @@
       <div class="tab-item active" data-tab="tutorial">チュートリアル</div>
       <div class="tab-item" data-tab="protein">タンパク質</div>
       <div class="tab-item" data-tab="rna">RNA</div>
-      <div class="tab-item" data-tab="md">MDシミュレーション</div>
       <div class="tab-item" data-tab="questions">ステージ</div>
       <div class="tab-item" data-tab="load">読み込み</div>
       <div class="tabs-right"></div>
@@ -94,6 +98,17 @@
 </main>
 
 <div class="tooltip" id="tooltip" hidden></div>
+
+<!-- 分子の動き（MDシミュレーション）のポップアップ -->
+<div class="md-pop" id="mdPop" hidden>
+  <div class="md-pop-win" role="dialog" aria-modal="true" aria-labelledby="mdPopTitle">
+    <div class="md-pop-head">
+      <span class="md-pop-title" id="mdPopTitle">分子の動き（MDシミュレーション）</span>
+      <button class="md-pop-close" id="mdPopClose">閉じる ✕</button>
+    </div>
+    <div class="md-pop-body" id="mdPopBody"></div>
+  </div>
+</div>
 
 <script src="mollook.js"></script>
 <script src="enzyme.js"></script>
