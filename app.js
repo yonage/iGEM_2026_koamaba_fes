@@ -1080,19 +1080,16 @@
   }
 
   // 目標の回路を、ブロックの色と形をまねた小さな図で示す。
-  // 並べ終わったものは濃く、次につなぐものは光らせ、まだのものは薄く。
+  // 並べ終わったものは濃く、次につなぐものは光らせ、まだのものは薄く（ラベルは付けず、見た目だけで伝える）。
   function guideFigureHtml(ids, allDone){
     const k = allDone ? ids.length : matchedPrefix(ids);
     return '<div class="gfig">' + ids.map((id, i) => {
       const part = PART_BY_ID[id];
       const cls = i < k ? 'ok' : (i === k ? 'next' : 'todo');
       return '<div class="gfig-item ' + cls + '">' +
-        (i === k ? '<span class="gfig-arrow">次はこれ</span>' : '') +
         '<span class="gfig-blk gfig-' + part.shape + '">' + part.short + '</span></div>';
     }).join('') + '</div>';
   }
-
-  let guideWhy = false;
 
   function renderGuide(){
     if (!guideReady) return;
@@ -1114,7 +1111,7 @@
       if (done && total) {
         body = '<div class="guide-now clear"><div class="guide-clear-title">' + stageName + ' クリア</div>' +
           (target ? guideFigureHtml(target, true) : '') +
-          '<div class="guide-learned"><b>ポイント</b>　' + g.learned + '</div>' +
+          '<div class="guide-learned">' + g.learned + '</div>' +
           (si < 3 ? '<button class="guide-next" id="guideNext">次のステージへ</button>' : '<div class="guide-learned">これで全ステージクリアです。あとは自由に回路を作ってみてください。</div>') +
         '</div>';
       } else if (total) {
@@ -1126,8 +1123,7 @@
           '<div class="guide-text">' + st.text + '</div>' +
           (target ? guideFigureHtml(target, false) : '') +
           (warn ? '<div class="guide-warn">' + warn + '</div>' : '') +
-          '<button class="guide-link guide-why-btn" id="guideWhyBtn">' + (guideWhy ? 'なぜ？を閉じる' : 'なぜ？') + '</button>' +
-          (guideWhy ? '<div class="guide-why">' + st.why + '</div>' : '');
+          '<div class="guide-why">' + st.why + '</div>';
       } else {
         body = '<div class="guide-text">' + g.intro + '</div>';
       }
@@ -1146,8 +1142,6 @@
         '</div>';
       guideEl.querySelector('#guideHide').addEventListener('click', () => { guideMin = true; renderGuide(); });
       guideEl.querySelector('#guideStoryBtn').addEventListener('click', () => { guideStory = !guideStory; renderGuide(); });
-      const why = guideEl.querySelector('#guideWhyBtn');
-      if (why) why.addEventListener('click', () => { guideWhy = !guideWhy; renderGuide(); });
       const nx = guideEl.querySelector('#guideNext');
       if (nx) nx.addEventListener('click', () => gotoStage(si + 1));
       const ex = guideEl.querySelector('#guideExample');
