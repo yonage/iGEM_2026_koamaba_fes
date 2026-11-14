@@ -89,8 +89,27 @@
   const advancedBtn = document.getElementById('advancedBtn');
   const advancedscript = document.getElementById('advancedscript');
   let advanced = false;
+  // スマホ幅かどうか。スマホではプログラム上のブロックを縮小して表示する（倍率 Z）
+  const mobileMQ = window.matchMedia('(max-width:760px)');
+  let Z = mobileMQ.matches ? 0.6 : 1;
+  function isMobile(){ return mobileMQ.matches; }
   // ガイド（下の方で定義）が使えるようになったら true。初期化中の呼び出しを無視するため
   let guideReady = false;
+  // タッチでは、ブロックをドラッグした直後などにブラウザが click を出さないことがある。
+  // よく使うボタンは指を離した時点で反応させ、その直後に来る click は二重に処理しない。
+  function onTap(el, fn){
+    let downId = null, lastTouch = 0;
+    el.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') downId = e.pointerId; });
+    el.addEventListener('pointercancel', () => { downId = null; });
+    el.addEventListener('pointerup', e => {
+      if (e.pointerType === 'mouse' || e.pointerId !== downId) return;
+      downId = null;
+      lastTouch = Date.now();
+      fn(e);
+    });
+    el.addEventListener('click', e => { if (Date.now() - lastTouch < 800) return; fn(e); });
+  }
+
   advancedBtn.addEventListener('click', () => {
     advanced =! advanced;
     if (activeTab === 'questions') renderQuestions();
@@ -98,14 +117,37 @@
   });
 
   // ---------- Right panel (Lab) toggle ----------
-  toggleRight.addEventListener('click', () => {
-    const show = rightPanel.classList.toggle('show');
+  // スマホでは Lab と結果プレビューを画面下から出す「シート」にし、
+  // プログラム下の「結果」「Lab」ボタンで開閉する（同時にはどちらか一方だけ）
+  const previewPanel = document.getElementById('previewPanel');
+  const mobResult = document.getElementById('mobResult');
+  const mobLab = document.getElementById('mobLab');
+  function setLab(show){
+    rightPanel.classList.toggle('show', show);
     toggleRight.textContent = show ? 'Lab を隠す' : 'Lab を表示';
+    mobLab.classList.toggle('on', show);
+    if (show && isMobile()) setResultSheet(false);
     if (guideReady) {
       renderGuide();
       // パネルの開閉アニメーションのあと、ガイドがはみ出していれば戻す
       setTimeout(renderGuide, 260);
     }
+  }
+  function setResultSheet(show){
+    previewPanel.classList.toggle('show', show);
+    mobResult.classList.toggle('on', show);
+    if (show && isMobile()) setLab(false);
+    else if (guideReady) renderGuide();
+  }
+  onTap(toggleRight, () => setLab(!rightPanel.classList.contains('show')));
+  onTap(mobLab, () => setLab(!rightPanel.classList.contains('show')));
+  onTap(document.getElementById('labClose'), () => setLab(false));
+  onTap(mobResult, () => setResultSheet(!previewPanel.classList.contains('show')));
+  onTap(document.getElementById('previewClose'), () => setResultSheet(false));
+  mobileMQ.addEventListener('change', () => {
+    Z = isMobile() ? 0.6 : 1;
+    blocks.forEach(render);
+    if (!isMobile()) previewPanel.classList.remove('show');
   });
 
   // ---------- Environment controls ----------
@@ -189,8 +231,15 @@
   // Positioned with translate3d rather than left/top: moving an element that carries a
   // drop-shadow filter via left/top leaves repaint trails, because the invalidated rect
   // does not include the filter's overflow. A composited transform avoids that entirely.
+  // ブロックの座標(x, connY)は縮小前の値のまま持ち、描画とポインタ位置の変換だけで倍率 Z を掛ける（Z は上で定義）。
+
   function render(b){
-    b.el.style.transform = 'translate3d(' + b.x + 'px,' + (b.connY + b.barOffset - b.h) + 'px,0)';
+    b.el.style.transform = 'translate3d(' + (b.x * Z) + 'px,' + ((b.connY + b.barOffset - b.h) * Z) + 'px,0)' + (Z !== 1 ? ' scale(' + Z + ')' : '');
+  }
+  // ポインタの画面座標 → プログラム上の座標（縮小前）
+  function toProgram(e){
+    const rect = program.getBoundingClientRect();
+    return { x: (e.clientX - rect.left) / Z, y: (e.clientY - rect.top) / Z };
   }
 
   function updateHint(){ programHint.style.display = blocks.size ? 'none' : 'flex'; }
@@ -228,7 +277,7 @@
 
   function positionGroup(group, headX, headConnY){
     headX = Math.max(4, headX);
-    headConnY = Math.max(20, Math.min(headConnY, program.clientHeight - 20));
+    headConnY = Math.max(20, Math.min(headConnY, program.clientHeight / Z - 20));
     let prev = null;
     group.forEach((id, i) => {
       const b = blocks.get(id);
@@ -263,9 +312,9 @@
 
   function onPointerMove(e){
     if (!dragState) return;
-    const rect = program.getBoundingClientRect();
-    const headX = (e.clientX - rect.left) - dragState.offsetX;
-    const headConnY = (e.clientY - rect.top) - dragState.offsetY;
+    const pt = toProgram(e);
+    const headX = pt.x - dragState.offsetX;
+    const headConnY = pt.y - dragState.offsetY;
     positionGroup(dragState.group, headX, headConnY);
     if (dragState.lastHighlight) dragState.lastHighlight.el.classList.remove('snap-target');
     const target = findSnapTarget(dragState.group, headX, headConnY);
@@ -280,9 +329,9 @@
   function onPointerUp(e){
     if (!dragState) return;
     const { group } = dragState;
-    const rect = program.getBoundingClientRect();
-    const headX = (e.clientX - rect.left) - dragState.offsetX;
-    const headConnY = (e.clientY - rect.top) - dragState.offsetY;
+    const pt = toProgram(e);
+    const headX = pt.x - dragState.offsetX;
+    const headConnY = pt.y - dragState.offsetY;
     const trayRect = trayWrap.getBoundingClientRect();
     const overTray = e.clientY >= trayRect.top;
 
@@ -324,9 +373,9 @@
     hideTooltip();
     const part = PART_BY_ID[item.dataset.partId];
     const shape = SHAPES[part.shape];
-    const rect = program.getBoundingClientRect();
-    const x = (e.clientX - rect.left) - shape.w / 2;
-    const connY = (e.clientY - rect.top);
+    const pt = toProgram(e);
+    const x = pt.x - shape.w / 2;
+    const connY = pt.y;
     const b = createPlaced(part.id, x, connY);
     beginDrag(e, [b.id], shape.w / 2, 0);
   });
@@ -341,9 +390,9 @@
     const group = [];
     let cur = b;
     while (cur) { group.push(cur.id); cur = cur.next ? blocks.get(cur.next) : null; }
-    const rect = program.getBoundingClientRect();
-    const offsetX = (e.clientX - rect.left) - b.x;
-    const offsetY = (e.clientY - rect.top) - b.connY;
+    const pt = toProgram(e);
+    const offsetX = pt.x - b.x;
+    const offsetY = pt.y - b.connY;
     beginDrag(e, group, offsetX, offsetY);
   });
 
@@ -603,11 +652,13 @@
       refreshActiveTab();
       if (mdPopOpen) renderMD();
       previewMD.hidden = !lastResults.length;
+      // スマホでは結果が隠れているので、実行したら結果のシートを出す（Lab を操作中は出さない）
+      if (isMobile() && lastResults.length && !rightPanel.classList.contains('show')) setResultSheet(true);
       renderGuide();
       runStatus.textContent = lastResults.length ? '実行完了（' + lastResults.length + '回路）' : '回路が組まれていません';
     }, 650);
   }
-  runBtn.addEventListener('click', runSimulation);
+  onTap(runBtn, runSimulation);
 
   function clearProgram(){
     blocks.forEach(b => b.el.remove());
@@ -622,7 +673,7 @@
     refreshActiveTab();
     if (mdPopOpen) renderMD();
   }
-  document.getElementById('clearBtn').addEventListener('click', clearProgram);
+  onTap(document.getElementById('clearBtn'), clearProgram);
 
   // ---------- 全画面「細胞内分子夾雑」ビューへの受け渡し ----------
   // ODE の定常状態タンパク質量を、細胞内コピー数濃度に換算して渡します。
@@ -934,7 +985,7 @@
           why: '組んだ遺伝子回路を大腸菌に入れたら何が起こるか、コンピュータで計算（シミュレーション）します。',
           check: () => ranCurrent() },
         { short: '分解率25%以上でクリア', hl: { el: 'oil' },
-          text: '右側の「<b>海水の重油汚染</b>」を見てみよう。分解率が<b>25%以上</b>ならクリア！',
+          text: '結果プレビューの「<b>海水の重油汚染</b>」を見てみよう。分解率が<b>25%以上</b>ならクリア！',
           why: '茶色い重油の層がうすくなっていれば、酵素がはたらいている証拠です。',
           check: () => false }
       ],
@@ -992,7 +1043,7 @@
       learned: 'リンカーで2つの遺伝子をつなぐと、両方の性質をもつ「融合タンパク質」ができます。合成生物学でよく使われるテクニックです。'
     },
     {
-      intro: '悪の組織が菌を盗んで重油タンクに入れようとしている！ シグナル分子がない場所では死ぬ、安全な菌にしよう。回路ができたら、画面右の「Lab（実験室）」でシグナル分子の濃さを変えて確かめます。',
+      intro: '悪の組織が菌を盗んで重油タンクに入れようとしている！ シグナル分子がない場所では死ぬ、安全な菌にしよう。回路ができたら、「Lab（実験室）」でシグナル分子の濃さを変えて確かめます。',
       steps: [
         { short: B('promSignalOff') + 'を置く', hl: { tray: 'promSignalOff' },
           text: '青いブロック' + B('promSignalOff') + 'を置こう。<br><small>前の回路は「全部消す」で消しておこう。</small>',
@@ -1007,8 +1058,8 @@
           why: 'これで「シグナル分子がないとキルスイッチがONになる」回路ができました。',
           check: () => startsWith(['promSignalOff', 'metaKill', 'term1']) },
         { short: 'シグナル分子 60以上 → 生きる', hl: { el: 'slider' }, openLab: true,
-          text: '画面右に開いた「<b>Lab（実験室）</b>」で、菌のまわりの環境を変えられます。光っている「<b>シグナル分子</b>」のスライダーを<b>60以上</b>にしよう。手をはなすと自動で実行されます。' +
-            '<small>Labを閉じてしまったときは、画面の右はしにある「Lab を表示」で開き直せます。</small>',
+          text: '開いた「<b>Lab（実験室）</b>」で、菌のまわりの環境を変えられます。光っている「<b>シグナル分子</b>」のスライダーを<b>60以上</b>にしよう。手をはなすと自動で実行されます。' +
+            '<small>Labを閉じてしまったときは、画面の右はしにある「Lab を表示」（スマホでは下の「Lab」ボタン）で開き直せます。</small>',
           why: 'シグナル分子は、処理したい海にだけまいておく物質です。そこでは菌は生きて重油を分解できます。',
           warn: () => stageState.killWithSignal && stageState.killWithSignal.dead
             ? 'シグナル分子があるのに死んでしまいました。プロモーターが' + B('promSignalOff') + 'になっているか確かめよう。' : null,
@@ -1054,9 +1105,11 @@
       return blk ? blk.closest('.tray-item-wrap') : null;
     }
     if (hl.el === 'run') return runBtn;
-    if (hl.el === 'oil') return oilPanel;
-    if (hl.el === 'lab') return toggleRight;
-    if (hl.el === 'slider') return rightPanel.classList.contains('show') ? drugA.closest('.drug-a') : toggleRight;
+    // スマホでは、閉じているシートの代わりにそれを開くボタンを光らせる
+    const labBtn = isMobile() ? mobLab : toggleRight;
+    if (hl.el === 'oil') return isMobile() && !previewPanel.classList.contains('show') ? mobResult : oilPanel;
+    if (hl.el === 'lab') return labBtn;
+    if (hl.el === 'slider') return rightPanel.classList.contains('show') ? drugA.closest('.drug-a') : labBtn;
     return null;
   }
 
@@ -1150,7 +1203,7 @@
     if (st && st.openLab && !labAutoOpened[si] && !rightPanel.classList.contains('show')) {
       labAutoOpened[si] = true;
       setTimeout(() => {
-        if (!rightPanel.classList.contains('show')) toggleRight.click();
+        if (!rightPanel.classList.contains('show')) setLab(true);
         showToast('Lab（実験室）を開きました');
       }, 0);
     }
@@ -1218,7 +1271,7 @@
   function placeExample(ids){
     blocks.forEach(b => b.el.remove());
     blocks.clear();
-    const y = Math.max(140, program.clientHeight - 90);
+    const y = Math.max(140, program.clientHeight / Z - 90);
     const made = ids.map(id => createPlaced(id, 12, y));
     for (let i = 0; i < made.length - 1; i++) { made[i].next = made[i + 1].id; made[i + 1].prev = made[i].id; }
     positionGroup(made.map(b => b.id), 12, y);

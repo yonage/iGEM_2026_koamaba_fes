@@ -14,6 +14,14 @@ A Scratch-like game focusing on genome editing.
 `main` ブランチに push すると、GitHub Actions(`.github/workflows/pages.yml`)が自動で GitHub Pages にデプロイします。
 初回のみ、リポジトリの **Settings → Pages → Build and deployment → Source** を **「GitHub Actions」** に設定してください。
 
+## スマホでの遊び方
+
+画面幅が狭いとき（760px以下）は、スマホ向けの表示になります。
+
+- プログラム上のブロックは縮小して表示され、指でドラッグしてつなげられます
+- 結果プレビューと Lab は、プログラム下の「結果」「Lab」ボタンで画面の下から出てきます（実行すると結果が自動で出ます）
+- 「分子の動きを見る」「細胞内を見る」も、縦長の画面に合わせて表示されます
+
 ## コンセプトの由来
 
 本プロジェクトは [iGEM UTokyo 2022「Genochemy」](https://2022.igem.wiki/utokyo/genochemy/)([実装](https://github.com/iGEM-UTokyo/genochemy))のコンセプトを参考に、UI/操作系を独自に再構成し、3D分子動力学など新しい機能を加えて開発しています。

@@ -266,7 +266,7 @@
 
   .cw-body{flex:1; display:flex; min-height:0;}
   .cw-canvas{flex:1; position:relative; min-width:0;}
-  .cw-canvas canvas{display:block; width:100%; height:100%;}
+  .cw-canvas canvas{display:block; width:100%; height:100%; touch-action:none;}
   .cw-hint{position:absolute; left:14px; bottom:12px; font-size:11px; color:#5f829b; pointer-events:none;}
 
   .cw-side{
@@ -544,3 +544,72 @@
   .tray-item-wrap[hidden]{display:none;}
   .preview-details{display:flex; flex-direction:column; gap:10px;}
   .preview-details[hidden]{display:none;}
+
+  /* ---------- スマホ対応 ---------- */
+  /* iOS のアドレスバーの出入りで高さがずれないように */
+  @supports (height:100dvh){ body{height:100dvh;} }
+  .placed{transform-origin:0 0;}
+  .mob-btn, .sheet-close{display:none;}
+
+  @media (max-width:760px){
+    .topbar{gap:6px; padding:0 8px;}
+    .topbar .ttl, .topbar .sub, .topbar a{display:none;}
+    .topbar img{height:20px; margin-right:auto;}
+    .topbar-btn{padding:6px 9px; font-size:11px;}
+    .advanced-btn{font-size:11px; padding:3px 6px;}
+
+    /* Lab は右端の帯ではなく、下の「Lab」ボタンで開く */
+    .lab-strip{display:none;}
+
+    .tray{height:150px;}
+    .tray-inner{gap:6px 10px; padding:30px 8px 8px; align-items:flex-end;}
+    .tray-item-wrap{zoom:.6;}
+    .tray-item-name{font-size:17px; max-width:200px;}
+    .tray-toggle{top:5px; right:8px; font-size:10.5px; padding:3px 9px;}
+
+    .run-wrap{bottom:8px; right:8px; gap:6px;}
+    .run-status{display:none !important;}
+    .run-btn{padding:8px 14px 8px 12px; font-size:13.5px; gap:6px;}
+    .clear-btn{padding:7px 10px; font-size:11.5px;}
+    .mob-btn{
+      display:inline-block; background:#fff; border:1px solid #aaa; border-radius:20px; padding:7px 12px;
+      font-family:inherit; font-size:12px; font-weight:700; color:#333; cursor:pointer;
+    }
+    .mob-btn.on{background:#0f231d; color:#fff; border-color:#0f231d;}
+
+    /* 結果プレビューと Lab は、画面の下から出てくるシートにする */
+    .preview, .right, .right.show{
+      display:flex; position:fixed; left:0; right:0; top:auto; bottom:0; width:100%; max-width:none; min-width:0;
+      height:62vh; border:none; border-radius:16px 16px 0 0; box-shadow:0 -10px 30px rgba(0,0,0,.22);
+      transform:translateY(105%); transition:transform .25s ease;
+    }
+    /* ガイド（z-index:60）より手前に出す */
+    .preview{z-index:70; padding-top:10px; height:60vh;}
+    .right, .right.show{z-index:71; overflow-y:auto;}
+    .preview.show, .right.show{transform:none;}
+    .sheet-close{
+      display:inline-block; margin-left:auto; background:#f2f2f2; border:1px solid #ccc; border-radius:8px;
+      padding:4px 12px; font-family:inherit; font-size:12px; font-weight:700; color:#444; cursor:pointer;
+    }
+    .preview h2{display:flex; align-items:center;}
+    .lab-close{position:absolute; top:8px; right:10px; z-index:5;}
+    .runner{height:230px;}
+    .bacterium{height:140px;}
+    .light-effect{height:200px;}
+    .right .tabs{overflow-x:auto; flex-wrap:nowrap;}
+    .right .tab-item{white-space:nowrap; padding:7px 10px; font-size:12px;}
+
+    /* ガイドはシートの上に見える範囲に収まるよう、文字を控えめに */
+    .guide .guide-text{font-size:13.5px; margin-bottom:6px;}
+    .guide .guide-text small{font-size:11px;}
+    .guide-why{font-size:11px;}
+    .gfig{margin:2px 0 4px;}
+    .guide-toast{font-size:14px; padding:10px 18px; white-space:nowrap;}
+
+    /* 全画面の「細胞内を見る」: 3D を上、操作パネルを下に */
+    .cw-body{flex-direction:column;}
+    .cw-canvas{flex:none; height:50vh;}
+    .cw-side{width:auto; flex:1; border-left:none; border-top:1px solid #16293a;}
+    .cw-title{font-size:13px;}
+    .cw-title small{display:none;}
+  }
