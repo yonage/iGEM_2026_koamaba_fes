@@ -992,7 +992,7 @@
       learned: 'リンカーで2つの遺伝子をつなぐと、両方の性質をもつ「融合タンパク質」ができます。合成生物学でよく使われるテクニックです。'
     },
     {
-      intro: '悪の組織が菌を盗んで重油タンクに入れようとしている！ シグナル分子がない場所では死ぬ、安全な菌にしよう。',
+      intro: '悪の組織が菌を盗んで重油タンクに入れようとしている！ シグナル分子がない場所では死ぬ、安全な菌にしよう。回路ができたら、画面右の「Lab（実験室）」でシグナル分子の濃さを変えて確かめます。',
       steps: [
         { short: B('promSignalOff') + 'を置く', hl: { tray: 'promSignalOff' },
           text: '青いブロック' + B('promSignalOff') + 'を置こう。<br><small>前の回路は「全部消す」で消しておこう。</small>',
@@ -1006,18 +1006,15 @@
           text: B('term1') + 'をつなごう。',
           why: 'これで「シグナル分子がないとキルスイッチがONになる」回路ができました。',
           check: () => startsWith(['promSignalOff', 'metaKill', 'term1']) },
-        { short: 'Labを開く', hl: { el: 'lab' },
-          text: '画面の右はしにある「<b>Lab を表示</b>」を押して、実験室（Lab）を開こう。',
-          why: 'Labでは、菌のまわりの環境（シグナル分子の濃さなど）を変えられます。',
-          check: () => rightPanel.classList.contains('show') || !!stageState.killWithSignal || !!stageState.killNoSignal },
-        { short: 'シグナル分子 60以上 → 生きる', hl: { el: 'slider' },
-          text: 'Labの「<b>シグナル分子</b>」スライダーを<b>60以上</b>にしよう。手をはなすと自動で実行されます。菌は生きているかな？',
+        { short: 'シグナル分子 60以上 → 生きる', hl: { el: 'slider' }, openLab: true,
+          text: '画面右に開いた「<b>Lab（実験室）</b>」で、菌のまわりの環境を変えられます。光っている「<b>シグナル分子</b>」のスライダーを<b>60以上</b>にしよう。手をはなすと自動で実行されます。' +
+            '<small>Labを閉じてしまったときは、画面の右はしにある「Lab を表示」で開き直せます。</small>',
           why: 'シグナル分子は、処理したい海にだけまいておく物質です。そこでは菌は生きて重油を分解できます。',
           warn: () => stageState.killWithSignal && stageState.killWithSignal.dead
             ? 'シグナル分子があるのに死んでしまいました。プロモーターが' + B('promSignalOff') + 'になっているか確かめよう。' : null,
           check: () => !!stageState.killWithSignal && !stageState.killWithSignal.dead },
         { short: 'シグナル分子 0 → 死ぬ', hl: { el: 'slider' },
-          text: '今度はスライダーを<b>0</b>に戻そう。シグナル分子がないと…？',
+          text: '今度はLabのスライダーを<b>0</b>に戻そう。シグナル分子がないと、菌はどうなるかな？',
           why: '外に逃げ出した菌は、シグナル分子がないので自分で死にます。これを「バイオコンテインメント（封じ込め）」といいます。',
           warn: () => stageState.killNoSignal && !stageState.killNoSignal.dead
             ? 'シグナル分子がないのに生きています。キルスイッチとターミネーターがつながっているか確かめよう。' : null,
@@ -1080,19 +1077,16 @@
   }
 
   // 目標の回路を、ブロックの色と形をまねた小さな図で示す。
-  // 並べ終わったものは濃く、次につなぐものは光らせ、まだのものは薄く。
+  // 並べ終わったものは濃く、次につなぐものは光らせ、まだのものは薄く（ラベルは付けず、見た目だけで伝える）。
   function guideFigureHtml(ids, allDone){
     const k = allDone ? ids.length : matchedPrefix(ids);
     return '<div class="gfig">' + ids.map((id, i) => {
       const part = PART_BY_ID[id];
       const cls = i < k ? 'ok' : (i === k ? 'next' : 'todo');
       return '<div class="gfig-item ' + cls + '">' +
-        (i === k ? '<span class="gfig-arrow">次はこれ</span>' : '') +
         '<span class="gfig-blk gfig-' + part.shape + '">' + part.short + '</span></div>';
     }).join('') + '</div>';
   }
-
-  let guideWhy = false;
 
   function renderGuide(){
     if (!guideReady) return;
@@ -1114,7 +1108,7 @@
       if (done && total) {
         body = '<div class="guide-now clear"><div class="guide-clear-title">' + stageName + ' クリア</div>' +
           (target ? guideFigureHtml(target, true) : '') +
-          '<div class="guide-learned"><b>ポイント</b>　' + g.learned + '</div>' +
+          '<div class="guide-learned">' + g.learned + '</div>' +
           (si < 3 ? '<button class="guide-next" id="guideNext">次のステージへ</button>' : '<div class="guide-learned">これで全ステージクリアです。あとは自由に回路を作ってみてください。</div>') +
         '</div>';
       } else if (total) {
@@ -1126,8 +1120,7 @@
           '<div class="guide-text">' + st.text + '</div>' +
           (target ? guideFigureHtml(target, false) : '') +
           (warn ? '<div class="guide-warn">' + warn + '</div>' : '') +
-          '<button class="guide-link guide-why-btn" id="guideWhyBtn">' + (guideWhy ? 'なぜ？を閉じる' : 'なぜ？') + '</button>' +
-          (guideWhy ? '<div class="guide-why">' + st.why + '</div>' : '');
+          '<div class="guide-why">' + st.why + '</div>';
       } else {
         body = '<div class="guide-text">' + g.intro + '</div>';
       }
@@ -1146,8 +1139,6 @@
         '</div>';
       guideEl.querySelector('#guideHide').addEventListener('click', () => { guideMin = true; renderGuide(); });
       guideEl.querySelector('#guideStoryBtn').addEventListener('click', () => { guideStory = !guideStory; renderGuide(); });
-      const why = guideEl.querySelector('#guideWhyBtn');
-      if (why) why.addEventListener('click', () => { guideWhy = !guideWhy; renderGuide(); });
       const nx = guideEl.querySelector('#guideNext');
       if (nx) nx.addEventListener('click', () => gotoStage(si + 1));
       const ex = guideEl.querySelector('#guideExample');
@@ -1155,6 +1146,14 @@
       guideEl.querySelectorAll('.guide-chip').forEach(b => b.addEventListener('click', () => gotoStage(Number(b.dataset.i))));
     }
     const st = !done && total ? g.steps[Math.min(cur, total - 1)] : null;
+    // Lab を使うステップに来たら、自分で探さなくていいように一度だけ自動で開く
+    if (st && st.openLab && !labAutoOpened[si] && !rightPanel.classList.contains('show')) {
+      labAutoOpened[si] = true;
+      setTimeout(() => {
+        if (!rightPanel.classList.contains('show')) toggleRight.click();
+        showToast('Lab（実験室）を開きました');
+      }, 0);
+    }
     setGuideHighlight(st ? guideTarget(st.hl) : null);
     renderTrayFilter();
     applyGuidePos();
@@ -1204,8 +1203,12 @@
   }
   window.addEventListener('resize', () => { if (guidePos) applyGuidePos(); });
 
+  // ステージごとに、Lab を自動で開いたかどうか（閉じた人の画面を勝手に開き直さないため）
+  const labAutoOpened = {};
+
   function gotoStage(i){
     quePage = i;
+    delete labAutoOpened[i];
     guideStory = false;
     renderGuide();
     if (activeTab === 'questions') renderQuestions();
