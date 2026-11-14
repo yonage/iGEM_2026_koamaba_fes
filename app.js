@@ -992,7 +992,7 @@
       learned: 'リンカーで2つの遺伝子をつなぐと、両方の性質をもつ「融合タンパク質」ができます。合成生物学でよく使われるテクニックです。'
     },
     {
-      intro: '悪の組織が菌を盗んで重油タンクに入れようとしている！ シグナル分子がない場所では死ぬ、安全な菌にしよう。',
+      intro: '悪の組織が菌を盗んで重油タンクに入れようとしている！ シグナル分子がない場所では死ぬ、安全な菌にしよう。回路ができたら、画面右の「Lab（実験室）」でシグナル分子の濃さを変えて確かめます。',
       steps: [
         { short: B('promSignalOff') + 'を置く', hl: { tray: 'promSignalOff' },
           text: '青いブロック' + B('promSignalOff') + 'を置こう。<br><small>前の回路は「全部消す」で消しておこう。</small>',
@@ -1006,18 +1006,15 @@
           text: B('term1') + 'をつなごう。',
           why: 'これで「シグナル分子がないとキルスイッチがONになる」回路ができました。',
           check: () => startsWith(['promSignalOff', 'metaKill', 'term1']) },
-        { short: 'Labを開く', hl: { el: 'lab' },
-          text: '画面の右はしにある「<b>Lab を表示</b>」を押して、実験室（Lab）を開こう。',
-          why: 'Labでは、菌のまわりの環境（シグナル分子の濃さなど）を変えられます。',
-          check: () => rightPanel.classList.contains('show') || !!stageState.killWithSignal || !!stageState.killNoSignal },
-        { short: 'シグナル分子 60以上 → 生きる', hl: { el: 'slider' },
-          text: 'Labの「<b>シグナル分子</b>」スライダーを<b>60以上</b>にしよう。手をはなすと自動で実行されます。菌は生きているかな？',
+        { short: 'シグナル分子 60以上 → 生きる', hl: { el: 'slider' }, openLab: true,
+          text: '画面右に開いた「<b>Lab（実験室）</b>」で、菌のまわりの環境を変えられます。光っている「<b>シグナル分子</b>」のスライダーを<b>60以上</b>にしよう。手をはなすと自動で実行されます。' +
+            '<small>Labを閉じてしまったときは、画面の右はしにある「Lab を表示」で開き直せます。</small>',
           why: 'シグナル分子は、処理したい海にだけまいておく物質です。そこでは菌は生きて重油を分解できます。',
           warn: () => stageState.killWithSignal && stageState.killWithSignal.dead
             ? 'シグナル分子があるのに死んでしまいました。プロモーターが' + B('promSignalOff') + 'になっているか確かめよう。' : null,
           check: () => !!stageState.killWithSignal && !stageState.killWithSignal.dead },
         { short: 'シグナル分子 0 → 死ぬ', hl: { el: 'slider' },
-          text: '今度はスライダーを<b>0</b>に戻そう。シグナル分子がないと…？',
+          text: '今度はLabのスライダーを<b>0</b>に戻そう。シグナル分子がないと、菌はどうなるかな？',
           why: '外に逃げ出した菌は、シグナル分子がないので自分で死にます。これを「バイオコンテインメント（封じ込め）」といいます。',
           warn: () => stageState.killNoSignal && !stageState.killNoSignal.dead
             ? 'シグナル分子がないのに生きています。キルスイッチとターミネーターがつながっているか確かめよう。' : null,
@@ -1149,6 +1146,14 @@
       guideEl.querySelectorAll('.guide-chip').forEach(b => b.addEventListener('click', () => gotoStage(Number(b.dataset.i))));
     }
     const st = !done && total ? g.steps[Math.min(cur, total - 1)] : null;
+    // Lab を使うステップに来たら、自分で探さなくていいように一度だけ自動で開く
+    if (st && st.openLab && !labAutoOpened[si] && !rightPanel.classList.contains('show')) {
+      labAutoOpened[si] = true;
+      setTimeout(() => {
+        if (!rightPanel.classList.contains('show')) toggleRight.click();
+        showToast('Lab（実験室）を開きました');
+      }, 0);
+    }
     setGuideHighlight(st ? guideTarget(st.hl) : null);
     renderTrayFilter();
     applyGuidePos();
@@ -1198,8 +1203,12 @@
   }
   window.addEventListener('resize', () => { if (guidePos) applyGuidePos(); });
 
+  // ステージごとに、Lab を自動で開いたかどうか（閉じた人の画面を勝手に開き直さないため）
+  const labAutoOpened = {};
+
   function gotoStage(i){
     quePage = i;
+    delete labAutoOpened[i];
     guideStory = false;
     renderGuide();
     if (activeTab === 'questions') renderQuestions();
